@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowStepMapper">
+
+    <!-- ResultMap 用于正确映射 step_config 字段 -->
+    <resultMap id="WorkflowStepResultMap" type="io.vanguard.testops.workflow.domain.WorkflowStep">
+        <id column="step_id" property="stepId"/>
+        <result column="workflow_id" property="workflowId"/>
+        <result column="name" property="name"/>
+        <result column="step_type" property="stepType"/>
+        <result column="order_num" property="orderNum"/>
+        <result column="step_config" property="stepConfig" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="position_x" property="positionX"/>
+        <result column="position_y" property="positionY"/>
+        <result column="ref_mode" property="refMode"/>
+        <result column="ref_metadata_id" property="refMetadataId"/>
+        <result column="ref_workflow_id" property="refWorkflowId"/>
+        <result column="enable" property="enable"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted_time" property="deletedTime"/>
+    </resultMap>
+
+    <!-- 根据工作流ID查询所有步骤 -->
+    <select id="selectByWorkflowId" resultMap="WorkflowStepResultMap">
+        SELECT * FROM workflow_step 
+        WHERE workflow_id = #{workflowId} AND deleted_time IS NULL 
+        ORDER BY order_num ASC
+    </select>
+
+    <!-- 根据工作流ID列表批量查询步骤（仅用于统计步骤数，只查 step_id/workflow_id） -->
+    <select id="selectByWorkflowIds" resultMap="WorkflowStepResultMap">
+        SELECT step_id, workflow_id FROM workflow_step
+        WHERE deleted_time IS NULL AND workflow_id IN
+        <foreach collection="workflowIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <!-- 批量插入步骤 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO workflow_step (
+            step_id, workflow_id, name, step_type, order_num, step_config,
+            position_x, position_y, ref_mode, ref_metadata_id, ref_workflow_id,
+            enable, create_time, update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.stepId},
+                #{item.workflowId},
+                #{item.name},
+                #{item.stepType},
+                #{item.orderNum},
+                #{item.stepConfig, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+                #{item.positionX},
+                #{item.positionY},
+                #{item.refMode},
+                #{item.refMetadataId},
+                #{item.refWorkflowId},
+                #{item.enable},
+                #{item.createTime},
+                #{item.updateTime}
+            )
+        </foreach>
+    </insert>
+
+</mapper>
+

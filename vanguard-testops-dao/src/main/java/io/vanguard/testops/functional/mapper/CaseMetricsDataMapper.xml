@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.CaseMetricsDataMapper">
+
+    <resultMap id="BaseResultMap" type="io.vanguard.testops.functional.domain.CaseMetricsData">
+        <id property="id" column="id" jdbcType="VARCHAR"/>
+        <result property="projectId" column="project_id" jdbcType="VARCHAR"/>
+        <result property="planId" column="plan_id" jdbcType="VARCHAR"/>
+        <result property="caseId" column="case_id" jdbcType="VARCHAR"/>
+        <result property="userId" column="user_id" jdbcType="VARCHAR"/>
+        <result property="caseCsScore" column="case_cs_score" jdbcType="DECIMAL"/>
+        <result property="totalCsScore" column="total_cs_score" jdbcType="DECIMAL"/>
+        <result property="avgCsScore" column="avg_cs_score" jdbcType="DECIMAL"/>
+        <result property="cognitiveScore" column="cognitive_score" jdbcType="DECIMAL"/>
+        <result property="preconditionScore" column="precondition_score" jdbcType="DECIMAL"/>
+        <result property="stepDetailScore" column="step_detail_score" jdbcType="DECIMAL"/>
+        <result property="csFactorC1" column="cs_factor_c1" jdbcType="DECIMAL"/>
+        <result property="csFactorC2" column="cs_factor_c2" jdbcType="DECIMAL"/>
+        <result property="csFactorC3" column="cs_factor_c3" jdbcType="DECIMAL"/>
+        <result property="csFactorC4" column="cs_factor_c4" jdbcType="DECIMAL"/>
+        <result property="csFactorC5" column="cs_factor_c5" jdbcType="DECIMAL"/>
+        <result property="csFactorC6" column="cs_factor_c6" jdbcType="DECIMAL"/>
+        <result property="csFactorC7" column="cs_factor_c7" jdbcType="DECIMAL"/>
+        <result property="completedCaseCount" column="completed_case_count" jdbcType="INTEGER"/>
+        <result property="caseOutputRate" column="case_output_rate" jdbcType="DECIMAL"/>
+        <result property="modifiedCaseCount" column="modified_case_count" jdbcType="INTEGER"/>
+        <result property="changeHeat" column="change_heat" jdbcType="INTEGER"/>
+        <result property="highFreqCaseCount" column="high_freq_case_count" jdbcType="INTEGER"/>
+        <result property="highFreqExecCsTotal" column="high_freq_exec_cs_total" jdbcType="DECIMAL"/>
+        <result property="allExecCsTotal" column="all_exec_cs_total" jdbcType="DECIMAL"/>
+        <result property="highValueExecRate" column="high_value_exec_rate" jdbcType="DECIMAL"/>
+        <result property="reusedCaseCount" column="reused_case_count" jdbcType="INTEGER"/>
+        <result property="reusedCsSaved" column="reused_cs_saved" jdbcType="DECIMAL"/>
+        <result property="timeSavingRate" column="time_saving_rate" jdbcType="DECIMAL"/>
+        <result property="planTotalCaseCount" column="plan_total_case_count" jdbcType="INTEGER"/>
+        <result property="planReusedCaseCount" column="plan_reused_case_count" jdbcType="INTEGER"/>
+        <result property="planCaseReuseRate" column="plan_case_reuse_rate" jdbcType="DECIMAL"/>
+        <result property="planModifiedCaseCount" column="plan_modified_case_count" jdbcType="INTEGER"/>
+        <result property="planCaseModifyRate" column="plan_case_modify_rate" jdbcType="DECIMAL"/>
+        <result property="planNewCaseCount" column="plan_new_case_count" jdbcType="INTEGER"/>
+        <result property="planCaseNewRate" column="plan_case_new_rate" jdbcType="DECIMAL"/>
+        <result property="planTotalExecDuration" column="plan_total_exec_duration" jdbcType="BIGINT"/>
+        <result property="planExecCaseCount" column="plan_exec_case_count" jdbcType="INTEGER"/>
+        <result property="planAvgExecDuration" column="plan_avg_exec_duration" jdbcType="BIGINT"/>
+        <result property="planTotalExecCount" column="plan_total_exec_count" jdbcType="INTEGER"/>
+        <result property="planPassCount" column="plan_pass_count" jdbcType="INTEGER"/>
+        <result property="planPassRate" column="plan_pass_rate" jdbcType="DECIMAL"/>
+        <result property="planFirstExecCount" column="plan_first_exec_count" jdbcType="INTEGER"/>
+        <result property="planFirstPassCount" column="plan_first_pass_count" jdbcType="INTEGER"/>
+        <result property="planFirstPassRate" column="plan_first_pass_rate" jdbcType="DECIMAL"/>
+        <result property="metricLevel" column="metric_level" jdbcType="VARCHAR"/>
+        <result property="timeDimension" column="time_dimension" jdbcType="VARCHAR"/>
+        <result property="snapshotDate" column="snapshot_date" jdbcType="DATE"/>
+        <result property="timeRangeStart" column="time_range_start" jdbcType="BIGINT"/>
+        <result property="timeRangeEnd" column="time_range_end" jdbcType="BIGINT"/>
+        <result property="isCalculated" column="is_calculated" jdbcType="TINYINT"/>
+        <result property="calculationTime" column="calculation_time" jdbcType="BIGINT"/>
+        <result property="createTime" column="create_time" jdbcType="BIGINT"/>
+        <result property="updateTime" column="update_time" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,project_id,plan_id,case_id,user_id,case_cs_score,total_cs_score,avg_cs_score,
+        cognitive_score,precondition_score,step_detail_score,cs_factor_c1,cs_factor_c2,cs_factor_c3,
+        cs_factor_c4,cs_factor_c5,cs_factor_c6,cs_factor_c7,completed_case_count,case_output_rate,
+        modified_case_count,change_heat,high_freq_case_count,high_freq_exec_cs_total,all_exec_cs_total,
+        high_value_exec_rate,reused_case_count,reused_cs_saved,time_saving_rate,plan_total_case_count,
+        plan_reused_case_count,plan_case_reuse_rate,plan_modified_case_count,plan_case_modify_rate,
+        plan_new_case_count,plan_case_new_rate,plan_total_exec_duration,plan_exec_case_count,
+        plan_avg_exec_duration,plan_total_exec_count,plan_pass_count,plan_pass_rate,plan_first_exec_count,
+        plan_first_pass_count,plan_first_pass_rate,metric_level,time_dimension,snapshot_date,
+        time_range_start,time_range_end,is_calculated,calculation_time,create_time,update_time
+    </sql>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_metrics_detail
+        where id = #{id,jdbcType=VARCHAR}
+    </select>
+
+    <select id="selectLatestByProject" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_metrics_detail
+        where project_id = #{projectId,jdbcType=VARCHAR}
+          and metric_level = #{metricLevel,jdbcType=VARCHAR}
+          and time_dimension = #{timeDimension,jdbcType=VARCHAR}
+        order by snapshot_date desc, create_time desc
+        limit 1
+    </select>
+
+    <select id="selectByProjectAndTimeRange" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_metrics_detail
+        where project_id = #{projectId,jdbcType=VARCHAR}
+          and time_range_start &gt;= #{startTime,jdbcType=BIGINT}
+          and time_range_end &lt;= #{endTime,jdbcType=BIGINT}
+        order by snapshot_date desc, create_time desc
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.String">
+        delete from spotter_efficiency.case_metrics_detail
+        where id = #{id,jdbcType=VARCHAR}
+    </delete>
+
+    <insert id="insert" keyColumn="id" keyProperty="id" parameterType="io.vanguard.testops.functional.domain.CaseMetricsData" useGeneratedKeys="true">
+        insert into spotter_efficiency.case_metrics_detail
+        ( id,project_id,plan_id,case_id,user_id,case_cs_score,total_cs_score,avg_cs_score
+        ,cognitive_score,precondition_score,step_detail_score,cs_factor_c1,cs_factor_c2,cs_factor_c3
+        ,cs_factor_c4,cs_factor_c5,cs_factor_c6,cs_factor_c7,completed_case_count,case_output_rate
+        ,modified_case_count,change_heat,high_freq_case_count,high_freq_exec_cs_total,all_exec_cs_total
+        ,high_value_exec_rate,reused_case_count,reused_cs_saved,time_saving_rate,plan_total_case_count
+        ,plan_reused_case_count,plan_case_reuse_rate,plan_modified_case_count,plan_case_modify_rate
+        ,plan_new_case_count,plan_case_new_rate,plan_total_exec_duration,plan_exec_case_count
+        ,plan_avg_exec_duration,plan_total_exec_count,plan_pass_count,plan_pass_rate,plan_first_exec_count
+        ,plan_first_pass_count,plan_first_pass_rate,metric_level,time_dimension,snapshot_date
+        ,time_range_start,time_range_end,is_calculated,calculation_time,create_time,update_time)
+        values (#{id,jdbcType=VARCHAR}, #{projectId,jdbcType=VARCHAR}, #{planId,jdbcType=VARCHAR}, 
+        #{caseId,jdbcType=VARCHAR}, #{userId,jdbcType=VARCHAR}, #{caseCsScore,jdbcType=DECIMAL}, 
+        #{totalCsScore,jdbcType=DECIMAL}, #{avgCsScore,jdbcType=DECIMAL}, #{cognitiveScore,jdbcType=DECIMAL}, 
+        #{preconditionScore,jdbcType=DECIMAL}, #{stepDetailScore,jdbcType=DECIMAL}, #{csFactorC1,jdbcType=DECIMAL}, 
+        #{csFactorC2,jdbcType=DECIMAL}, #{csFactorC3,jdbcType=DECIMAL}, #{csFactorC4,jdbcType=DECIMAL}, 
+        #{csFactorC5,jdbcType=DECIMAL}, #{csFactorC6,jdbcType=DECIMAL}, #{csFactorC7,jdbcType=DECIMAL}, 
+        #{completedCaseCount,jdbcType=INTEGER}, #{caseOutputRate,jdbcType=DECIMAL}, #{modifiedCaseCount,jdbcType=INTEGER}, 
+        #{changeHeat,jdbcType=INTEGER}, #{highFreqCaseCount,jdbcType=INTEGER}, #{highFreqExecCsTotal,jdbcType=DECIMAL}, 
+        #{allExecCsTotal,jdbcType=DECIMAL}, #{highValueExecRate,jdbcType=DECIMAL}, #{reusedCaseCount,jdbcType=INTEGER}, 
+        #{reusedCsSaved,jdbcType=DECIMAL}, #{timeSavingRate,jdbcType=DECIMAL}, #{planTotalCaseCount,jdbcType=INTEGER}, 
+        #{planReusedCaseCount,jdbcType=INTEGER}, #{planCaseReuseRate,jdbcType=DECIMAL}, #{planModifiedCaseCount,jdbcType=INTEGER}, 
+        #{planCaseModifyRate,jdbcType=DECIMAL}, #{planNewCaseCount,jdbcType=INTEGER}, #{planCaseNewRate,jdbcType=DECIMAL}, 
+        #{planTotalExecDuration,jdbcType=BIGINT}, #{planExecCaseCount,jdbcType=INTEGER}, #{planAvgExecDuration,jdbcType=BIGINT}, 
+        #{planTotalExecCount,jdbcType=INTEGER}, #{planPassCount,jdbcType=INTEGER}, #{planPassRate,jdbcType=DECIMAL}, 
+        #{planFirstExecCount,jdbcType=INTEGER}, #{planFirstPassCount,jdbcType=INTEGER}, #{planFirstPassRate,jdbcType=DECIMAL}, 
+        #{metricLevel,jdbcType=VARCHAR}, #{timeDimension,jdbcType=VARCHAR}, #{snapshotDate,jdbcType=DATE}, 
+        #{timeRangeStart,jdbcType=BIGINT}, #{timeRangeEnd,jdbcType=BIGINT}, #{isCalculated,jdbcType=TINYINT}, 
+        #{calculationTime,jdbcType=BIGINT}, #{createTime,jdbcType=BIGINT}, #{updateTime,jdbcType=BIGINT})
+    </insert>
+
+    <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="io.vanguard.testops.functional.domain.CaseMetricsData" useGeneratedKeys="true">
+        insert into spotter_efficiency.case_metrics_detail
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+                <if test="id != null">id,</if>
+                <if test="projectId != null">project_id,</if>
+                <if test="planId != null">plan_id,</if>
+                <if test="caseId != null">case_id,</if>
+                <if test="userId != null">user_id,</if>
+                <if test="caseCsScore != null">case_cs_score,</if>
+                <if test="totalCsScore != null">total_cs_score,</if>
+                <if test="avgCsScore != null">avg_cs_score,</if>
+                <if test="cognitiveScore != null">cognitive_score,</if>
+                <if test="preconditionScore != null">precondition_score,</if>
+                <if test="stepDetailScore != null">step_detail_score,</if>
+                <if test="csFactorC1 != null">cs_factor_c1,</if>
+                <if test="csFactorC2 != null">cs_factor_c2,</if>
+                <if test="csFactorC3 != null">cs_factor_c3,</if>
+                <if test="csFactorC4 != null">cs_factor_c4,</if>
+                <if test="csFactorC5 != null">cs_factor_c5,</if>
+                <if test="csFactorC6 != null">cs_factor_c6,</if>
+                <if test="csFactorC7 != null">cs_factor_c7,</if>
+                <if test="completedCaseCount != null">completed_case_count,</if>
+                <if test="caseOutputRate != null">case_output_rate,</if>
+                <if test="modifiedCaseCount != null">modified_case_count,</if>
+                <if test="changeHeat != null">change_heat,</if>
+                <if test="highFreqCaseCount != null">high_freq_case_count,</if>
+                <if test="highFreqExecCsTotal != null">high_freq_exec_cs_total,</if>
+                <if test="allExecCsTotal != null">all_exec_cs_total,</if>
+                <if test="highValueExecRate != null">high_value_exec_rate,</if>
+                <if test="reusedCaseCount != null">reused_case_count,</if>
+                <if test="reusedCsSaved != null">reused_cs_saved,</if>
+                <if test="timeSavingRate != null">time_saving_rate,</if>
+                <if test="planTotalCaseCount != null">plan_total_case_count,</if>
+                <if test="planReusedCaseCount != null">plan_reused_case_count,</if>
+                <if test="planCaseReuseRate != null">plan_case_reuse_rate,</if>
+                <if test="planModifiedCaseCount != null">plan_modified_case_count,</if>
+                <if test="planCaseModifyRate != null">plan_case_modify_rate,</if>
+                <if test="planNewCaseCount != null">plan_new_case_count,</if>
+                <if test="planCaseNewRate != null">plan_case_new_rate,</if>
+                <if test="planTotalExecDuration != null">plan_total_exec_duration,</if>
+                <if test="planExecCaseCount != null">plan_exec_case_count,</if>
+                <if test="planAvgExecDuration != null">plan_avg_exec_duration,</if>
+                <if test="planTotalExecCount != null">plan_total_exec_count,</if>
+                <if test="planPassCount != null">plan_pass_count,</if>
+                <if test="planPassRate != null">plan_pass_rate,</if>
+                <if test="planFirstExecCount != null">plan_first_exec_count,</if>
+                <if test="planFirstPassCount != null">plan_first_pass_count,</if>
+                <if test="planFirstPassRate != null">plan_first_pass_rate,</if>
+                <if test="metricLevel != null">metric_level,</if>
+                <if test="timeDimension != null">time_dimension,</if>
+                <if test="snapshotDate != null">snapshot_date,</if>
+                <if test="timeRangeStart != null">time_range_start,</if>
+                <if test="timeRangeEnd != null">time_range_end,</if>
+                <if test="isCalculated != null">is_calculated,</if>
+                <if test="calculationTime != null">calculation_time,</if>
+                <if test="createTime != null">create_time,</if>
+                <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+                <if test="id != null">#{id,jdbcType=VARCHAR},</if>
+                <if test="projectId != null">#{projectId,jdbcType=VARCHAR},</if>
+                <if test="planId != null">#{planId,jdbcType=VARCHAR},</if>
+                <if test="caseId != null">#{caseId,jdbcType=VARCHAR},</if>
+                <if test="userId != null">#{userId,jdbcType=VARCHAR},</if>
+                <if test="caseCsScore != null">#{caseCsScore,jdbcType=DECIMAL},</if>
+                <if test="totalCsScore != null">#{totalCsScore,jdbcType=DECIMAL},</if>
+                <if test="avgCsScore != null">#{avgCsScore,jdbcType=DECIMAL},</if>
+                <if test="cognitiveScore != null">#{cognitiveScore,jdbcType=DECIMAL},</if>
+                <if test="preconditionScore != null">#{preconditionScore,jdbcType=DECIMAL},</if>
+                <if test="stepDetailScore != null">#{stepDetailScore,jdbcType=DECIMAL},</if>
+                <if test="csFactorC1 != null">#{csFactorC1,jdbcType=DECIMAL},</if>
+                <if test="csFactorC2 != null">#{csFactorC2,jdbcType=DECIMAL},</if>
+                <if test="csFactorC3 != null">#{csFactorC3,jdbcType=DECIMAL},</if>
+                <if test="csFactorC4 != null">#{csFactorC4,jdbcType=DECIMAL},</if>
+                <if test="csFactorC5 != null">#{csFactorC5,jdbcType=DECIMAL},</if>
+                <if test="csFactorC6 != null">#{csFactorC6,jdbcType=DECIMAL},</if>
+                <if test="csFactorC7 != null">#{csFactorC7,jdbcType=DECIMAL},</if>
+                <if test="completedCaseCount != null">#{completedCaseCount,jdbcType=INTEGER},</if>
+                <if test="caseOutputRate != null">#{caseOutputRate,jdbcType=DECIMAL},</if>
+                <if test="modifiedCaseCount != null">#{modifiedCaseCount,jdbcType=INTEGER},</if>
+                <if test="changeHeat != null">#{changeHeat,jdbcType=INTEGER},</if>
+                <if test="highFreqCaseCount != null">#{highFreqCaseCount,jdbcType=INTEGER},</if>
+                <if test="highFreqExecCsTotal != null">#{highFreqExecCsTotal,jdbcType=DECIMAL},</if>
+                <if test="allExecCsTotal != null">#{allExecCsTotal,jdbcType=DECIMAL},</if>
+                <if test="highValueExecRate != null">#{highValueExecRate,jdbcType=DECIMAL},</if>
+                <if test="reusedCaseCount != null">#{reusedCaseCount,jdbcType=INTEGER},</if>
+                <if test="reusedCsSaved != null">#{reusedCsSaved,jdbcType=DECIMAL},</if>
+                <if test="timeSavingRate != null">#{timeSavingRate,jdbcType=DECIMAL},</if>
+                <if test="planTotalCaseCount != null">#{planTotalCaseCount,jdbcType=INTEGER},</if>
+                <if test="planReusedCaseCount != null">#{planReusedCaseCount,jdbcType=INTEGER},</if>
+                <if test="planCaseReuseRate != null">#{planCaseReuseRate,jdbcType=DECIMAL},</if>
+                <if test="planModifiedCaseCount != null">#{planModifiedCaseCount,jdbcType=INTEGER},</if>
+                <if test="planCaseModifyRate != null">#{planCaseModifyRate,jdbcType=DECIMAL},</if>
+                <if test="planNewCaseCount != null">#{planNewCaseCount,jdbcType=INTEGER},</if>
+                <if test="planCaseNewRate != null">#{planCaseNewRate,jdbcType=DECIMAL},</if>
+                <if test="planTotalExecDuration != null">#{planTotalExecDuration,jdbcType=BIGINT},</if>
+                <if test="planExecCaseCount != null">#{planExecCaseCount,jdbcType=INTEGER},</if>
+                <if test="planAvgExecDuration != null">#{planAvgExecDuration,jdbcType=BIGINT},</if>
+                <if test="planTotalExecCount != null">#{planTotalExecCount,jdbcType=INTEGER},</if>
+                <if test="planPassCount != null">#{planPassCount,jdbcType=INTEGER},</if>
+                <if test="planPassRate != null">#{planPassRate,jdbcType=DECIMAL},</if>
+                <if test="planFirstExecCount != null">#{planFirstExecCount,jdbcType=INTEGER},</if>
+                <if test="planFirstPassCount != null">#{planFirstPassCount,jdbcType=INTEGER},</if>
+                <if test="planFirstPassRate != null">#{planFirstPassRate,jdbcType=DECIMAL},</if>
+                <if test="metricLevel != null">#{metricLevel,jdbcType=VARCHAR},</if>
+                <if test="timeDimension != null">#{timeDimension,jdbcType=VARCHAR},</if>
+                <if test="snapshotDate != null">#{snapshotDate,jdbcType=DATE},</if>
+                <if test="timeRangeStart != null">#{timeRangeStart,jdbcType=BIGINT},</if>
+                <if test="timeRangeEnd != null">#{timeRangeEnd,jdbcType=BIGINT},</if>
+                <if test="isCalculated != null">#{isCalculated,jdbcType=TINYINT},</if>
+                <if test="calculationTime != null">#{calculationTime,jdbcType=BIGINT},</if>
+                <if test="createTime != null">#{createTime,jdbcType=BIGINT},</if>
+                <if test="updateTime != null">#{updateTime,jdbcType=BIGINT},</if>
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="io.vanguard.testops.functional.domain.CaseMetricsData">
+        update spotter_efficiency.case_metrics_detail
+        <set>
+                <if test="projectId != null">project_id = #{projectId,jdbcType=VARCHAR},</if>
+                <if test="planId != null">plan_id = #{planId,jdbcType=VARCHAR},</if>
+                <if test="caseId != null">case_id = #{caseId,jdbcType=VARCHAR},</if>
+                <if test="userId != null">user_id = #{userId,jdbcType=VARCHAR},</if>
+                <if test="caseCsScore != null">case_cs_score = #{caseCsScore,jdbcType=DECIMAL},</if>
+                <if test="totalCsScore != null">total_cs_score = #{totalCsScore,jdbcType=DECIMAL},</if>
+                <if test="avgCsScore != null">avg_cs_score = #{avgCsScore,jdbcType=DECIMAL},</if>
+                <if test="completedCaseCount != null">completed_case_count = #{completedCaseCount,jdbcType=INTEGER},</if>
+                <if test="caseOutputRate != null">case_output_rate = #{caseOutputRate,jdbcType=DECIMAL},</if>
+                <if test="modifiedCaseCount != null">modified_case_count = #{modifiedCaseCount,jdbcType=INTEGER},</if>
+                <if test="changeHeat != null">change_heat = #{changeHeat,jdbcType=INTEGER},</if>
+                <if test="highFreqCaseCount != null">high_freq_case_count = #{highFreqCaseCount,jdbcType=INTEGER},</if>
+                <if test="highValueExecRate != null">high_value_exec_rate = #{highValueExecRate,jdbcType=DECIMAL},</if>
+                <if test="timeSavingRate != null">time_saving_rate = #{timeSavingRate,jdbcType=DECIMAL},</if>
+                <if test="planCaseReuseRate != null">plan_case_reuse_rate = #{planCaseReuseRate,jdbcType=DECIMAL},</if>
+                <if test="planCaseModifyRate != null">plan_case_modify_rate = #{planCaseModifyRate,jdbcType=DECIMAL},</if>
+                <if test="planCaseNewRate != null">plan_case_new_rate = #{planCaseNewRate,jdbcType=DECIMAL},</if>
+                <if test="planAvgExecDuration != null">plan_avg_exec_duration = #{planAvgExecDuration,jdbcType=BIGINT},</if>
+                <if test="planPassRate != null">plan_pass_rate = #{planPassRate,jdbcType=DECIMAL},</if>
+                <if test="planFirstPassRate != null">plan_first_pass_rate = #{planFirstPassRate,jdbcType=DECIMAL},</if>
+                <if test="isCalculated != null">is_calculated = #{isCalculated,jdbcType=TINYINT},</if>
+                <if test="calculationTime != null">calculation_time = #{calculationTime,jdbcType=BIGINT},</if>
+                <if test="updateTime != null">update_time = #{updateTime,jdbcType=BIGINT},</if>
+        </set>
+        where id = #{id,jdbcType=VARCHAR}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="io.vanguard.testops.functional.domain.CaseMetricsData">
+        update spotter_efficiency.case_metrics_detail
+        set project_id = #{projectId,jdbcType=VARCHAR},
+            avg_cs_score = #{avgCsScore,jdbcType=DECIMAL},
+            case_output_rate = #{caseOutputRate,jdbcType=DECIMAL},
+            change_heat = #{changeHeat,jdbcType=INTEGER},
+            high_value_exec_rate = #{highValueExecRate,jdbcType=DECIMAL},
+            time_saving_rate = #{timeSavingRate,jdbcType=DECIMAL},
+            plan_case_reuse_rate = #{planCaseReuseRate,jdbcType=DECIMAL},
+            plan_case_modify_rate = #{planCaseModifyRate,jdbcType=DECIMAL},
+            plan_case_new_rate = #{planCaseNewRate,jdbcType=DECIMAL},
+            plan_avg_exec_duration = #{planAvgExecDuration,jdbcType=BIGINT},
+            plan_pass_rate = #{planPassRate,jdbcType=DECIMAL},
+            plan_first_pass_rate = #{planFirstPassRate,jdbcType=DECIMAL},
+            update_time = #{updateTime,jdbcType=BIGINT}
+        where id = #{id,jdbcType=VARCHAR}
+    </update>
+
+    <insert id="batchInsert">
+        insert into spotter_efficiency.case_metrics_detail
+        (id,project_id,plan_id,case_id,user_id,avg_cs_score,case_output_rate,change_heat,
+        high_value_exec_rate,time_saving_rate,plan_case_reuse_rate,plan_case_modify_rate,
+        plan_case_new_rate,plan_avg_exec_duration,plan_pass_rate,plan_first_pass_rate,
+        metric_level,time_dimension,snapshot_date,time_range_start,time_range_end,
+        is_calculated,calculation_time,create_time,update_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id,jdbcType=VARCHAR}, #{item.projectId,jdbcType=VARCHAR}, #{item.planId,jdbcType=VARCHAR}, 
+            #{item.caseId,jdbcType=VARCHAR}, #{item.userId,jdbcType=VARCHAR}, #{item.avgCsScore,jdbcType=DECIMAL}, 
+            #{item.caseOutputRate,jdbcType=DECIMAL}, #{item.changeHeat,jdbcType=INTEGER}, 
+            #{item.highValueExecRate,jdbcType=DECIMAL}, #{item.timeSavingRate,jdbcType=DECIMAL}, 
+            #{item.planCaseReuseRate,jdbcType=DECIMAL}, #{item.planCaseModifyRate,jdbcType=DECIMAL}, 
+            #{item.planCaseNewRate,jdbcType=DECIMAL}, #{item.planAvgExecDuration,jdbcType=BIGINT}, 
+            #{item.planPassRate,jdbcType=DECIMAL}, #{item.planFirstPassRate,jdbcType=DECIMAL}, 
+            #{item.metricLevel,jdbcType=VARCHAR}, #{item.timeDimension,jdbcType=VARCHAR}, 
+            #{item.snapshotDate,jdbcType=DATE}, #{item.timeRangeStart,jdbcType=BIGINT}, 
+            #{item.timeRangeEnd,jdbcType=BIGINT}, #{item.isCalculated,jdbcType=TINYINT}, 
+            #{item.calculationTime,jdbcType=BIGINT}, #{item.createTime,jdbcType=BIGINT}, #{item.updateTime,jdbcType=BIGINT})
+        </foreach>
+    </insert>
+
+</mapper>

@@ -1,0 +1,743 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.requirementquality.mapper.ExtRequirementQualityMapper">
+
+    <!--
+        需求质量列表：仅展示已关联测试计划组的需求；需求 → 测试计划组 → 测试计划 → 用例。
+        状态使用「展示状态」（与测试计划列表一致）：PREPARED/UNDERWAY/COMPLETED/ARCHIVED，
+        由组下用例执行情况计算，非 DB 的 NOT_ARCHIVED/ARCHIVED。
+    -->
+    <select id="selectRequirementQualityListPage" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityListRowVO">
+        select
+            mss.story_id as storyId,
+            mss.story_name as storyName,
+            agg.owner as owner,
+            agg.show_status as planStatus,
+            ifnull(agg.case_total_count, 0) as caseTotalCount,
+            ifnull(agg.case_executed_count, 0) as caseExecutedCount,
+            ifnull(agg.passed_count, 0) as passedCount,
+            (select count(*) from (
+                select distinct cer.plan_id, cer.case_id
+                from spotter_efficiency.case_execution_record cer
+                inner join (
+                    select tp.id as plan_id, tpfc.functional_case_id as case_id
+                    from spotter_aegis.test_plan grp
+                    inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                    inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                    where grp.type = 'GROUP'
+                      and grp.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+                ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                  and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+                inner join (
+                    select plan_id, case_id, min(create_time) as first_time
+                    from spotter_efficiency.case_execution_record
+                    group by plan_id, case_id
+                ) first_t on first_t.plan_id COLLATE utf8mb4_general_ci = cer.plan_id COLLATE utf8mb4_general_ci
+                  and first_t.case_id COLLATE utf8mb4_general_ci = cer.case_id COLLATE utf8mb4_general_ci
+                  and first_t.first_time = cer.create_time
+                where cer.exec_result in ('SUCCESS','PASS')
+            ) fp) as firstPassCount,
+            (select count(*) from (
+                select distinct cer.plan_id, cer.case_id
+                from spotter_efficiency.case_execution_record cer
+                inner join (
+                    select tp.id as plan_id, tpfc.functional_case_id as case_id
+                    from spotter_aegis.test_plan grp
+                    inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                    inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                    where grp.type = 'GROUP'
+                      and grp.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+                ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                  and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+            ) tot) as totalExecutedCountFromCer,
+            agg.execution_period_start as executionPeriodStart,
+            agg.execution_period_end as executionPeriodEnd,
+            null as avgWriteDeviationRate,
+            null as avgExecDeviationRate,
+            mss.defect_count as defectCount,
+            mss.reopen_rate as reopenRate,
+            mss.code_coverage as codeCoverage,
+            mss.frontend_defect_count as frontendDefectCount,
+            mss.backend_defect_count as backendDefectCount,
+            mss.frontend_loc_changed as frontendLocChanged,
+            mss.backend_loc_changed as backendLocChanged,
+            mss.deploy_total_count as deployTotalCount,
+            mss.deploy_failure_count as deployFailureCount,
+            mss.change_failure_rate as changeFailureRate
+        from spotter_efficiency.meego_story_stats mss
+        inner join (
+            select
+                grp.feishu_story_id,
+                max(grp.create_user) as owner,
+                max(grp.status) as grp_status,
+                count(distinct tpfc.functional_case_id) as case_total_count,
+                count(distinct case when (tpfc.functional_case_id is not null) and (tpfc.last_exec_result is null or tpfc.last_exec_result = '' or tpfc.last_exec_result = 'PENDING') then tpfc.functional_case_id end) as pending_count,
+                count(distinct case when tpfc.last_exec_result is not null and tpfc.last_exec_result != '' and tpfc.last_exec_result != 'PENDING' then tpfc.functional_case_id end) as case_executed_count,
+                count(distinct case when tpfc.last_exec_result = 'SUCCESS' then tpfc.functional_case_id end) as passed_count,
+                min(tp.create_time) as execution_period_start,
+                coalesce(max(tpfc.last_exec_time), max(tp.actual_end_time), max(tp.planned_end_time), max(tp.update_time)) as execution_period_end,
+                case
+                    when max(grp.status) = 'ARCHIVED' then 'ARCHIVED'
+                    when count(distinct tpfc.functional_case_id) = 0 then 'PREPARED'
+                    when count(distinct case when (tpfc.functional_case_id is not null) and (tpfc.last_exec_result is null or tpfc.last_exec_result = '' or tpfc.last_exec_result = 'PENDING') then tpfc.functional_case_id end) = 0 then 'COMPLETED'
+                    else 'UNDERWAY'
+                end as show_status
+            from spotter_aegis.test_plan grp
+            inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+            left join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+            where grp.type = 'GROUP' and grp.feishu_story_id is not null and grp.feishu_story_id != ''
+            group by grp.feishu_story_id
+        ) agg on agg.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+        where 1=1
+        <if test="projectIds != null and !projectIds.isEmpty()">
+            and mss.story_id COLLATE utf8mb4_general_ci in (
+                select distinct grp2.feishu_story_id COLLATE utf8mb4_general_ci from spotter_aegis.test_plan grp2
+                where grp2.type = 'GROUP' and grp2.feishu_story_id is not null and grp2.feishu_story_id != ''
+                and grp2.project_id in
+                <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                    #{pid,jdbcType=VARCHAR}
+                </foreach>
+            )
+        </if>
+        <if test="status != null and status != ''">
+            and agg.show_status = #{status,jdbcType=VARCHAR}
+        </if>
+        <if test="storyIds != null and !storyIds.isEmpty()">
+            and mss.story_id COLLATE utf8mb4_general_ci in
+            <foreach collection="storyIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="executionPeriodStart != null">
+            and (agg.execution_period_end is null or agg.execution_period_end >= #{executionPeriodStart,jdbcType=BIGINT})
+        </if>
+        <if test="executionPeriodEnd != null">
+            and agg.execution_period_start &lt;= #{executionPeriodEnd,jdbcType=BIGINT}
+        </if>
+        order by
+        <choose>
+            <when test="sortBy == 'caseExecutedCount'">agg.case_executed_count <include refid="sortOrderClause"/></when>
+            <when test="sortBy == 'executionRate'">(ifnull(agg.case_executed_count, 0) * 1.0 / nullif(ifnull(agg.case_total_count, 0), 0)) <include refid="sortOrderClause"/></when>
+            <when test="sortBy == 'passRate'">(ifnull(agg.passed_count, 0) * 1.0 / nullif(ifnull(agg.case_total_count, 0), 0)) <include refid="sortOrderClause"/></when>
+            <when test="sortBy == 'firstPassRate'">(firstPassCount * 1.0 / nullif(totalExecutedCountFromCer, 0)) <include refid="sortOrderClause"/></when>
+            <when test="sortBy == 'defectCount'">mss.defect_count <include refid="sortOrderClause"/></when>
+            <when test="sortBy == 'reopenRate'">mss.reopen_rate <include refid="sortOrderClause"/></when>
+            <when test="sortBy == 'codeCoverage'">mss.code_coverage <include refid="sortOrderClause"/></when>
+            <otherwise>mss.updated_at desc</otherwise>
+        </choose>
+        limit #{pageSize,jdbcType=INTEGER} offset #{offset,jdbcType=BIGINT}
+    </select>
+
+    <sql id="sortOrderClause"><if test="sortOrder == 'asc'">asc</if><if test="sortOrder != 'asc'">desc</if></sql>
+
+    <!-- 仅统计已关联测试计划组的需求数量；状态筛选按展示状态 PREPARED/UNDERWAY/COMPLETED/ARCHIVED -->
+    <select id="countRequirementQualityList" resultType="long">
+        select count(*)
+        from spotter_efficiency.meego_story_stats mss
+        inner join (
+            select grp.feishu_story_id,
+                min(tp.create_time) as execution_period_start,
+                coalesce(max(tpfc.last_exec_time), max(tp.actual_end_time), max(tp.planned_end_time), max(tp.update_time)) as execution_period_end,
+                case
+                    when max(grp.status) = 'ARCHIVED' then 'ARCHIVED'
+                    when count(distinct tpfc.functional_case_id) = 0 then 'PREPARED'
+                    when count(distinct case when (tpfc.functional_case_id is not null) and (tpfc.last_exec_result is null or tpfc.last_exec_result = '' or tpfc.last_exec_result = 'PENDING') then tpfc.functional_case_id end) = 0 then 'COMPLETED'
+                    else 'UNDERWAY'
+                end as show_status
+            from spotter_aegis.test_plan grp
+            inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+            left join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+            where grp.type = 'GROUP' and grp.feishu_story_id is not null and grp.feishu_story_id != ''
+            <if test="projectIds != null and !projectIds.isEmpty()">
+                and grp.project_id in
+                <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                    #{pid,jdbcType=VARCHAR}
+                </foreach>
+            </if>
+            group by grp.feishu_story_id
+        ) linked on linked.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+        where 1=1
+        <if test="status != null and status != ''">
+            and linked.show_status = #{status,jdbcType=VARCHAR}
+        </if>
+        <if test="storyIds != null and !storyIds.isEmpty()">
+            and mss.story_id COLLATE utf8mb4_general_ci in
+            <foreach collection="storyIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="executionPeriodStart != null">
+            and (linked.execution_period_end is null or linked.execution_period_end >= #{executionPeriodStart,jdbcType=BIGINT})
+        </if>
+        <if test="executionPeriodEnd != null">
+            and linked.execution_period_start &lt;= #{executionPeriodEnd,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <!-- 概览卡全局聚合：仅已关联测试计划组的需求，与列表同逻辑；状态筛选按展示状态；千行代码缺陷率平均仅对变更行数>0的需求 -->
+    <select id="selectRequirementQualityOverviewAgg" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityOverviewAggVO">
+        select
+            sum(ifnull(agg.case_total_count, 0)) as caseTotalCount,
+            sum(ifnull(agg.case_executed_count, 0)) as caseExecutedCount,
+            sum(ifnull(agg.passed_count, 0)) as passedCount,
+            sum((select count(*) from (
+                select distinct cer.plan_id, cer.case_id
+                from spotter_efficiency.case_execution_record cer
+                inner join (
+                    select tp.id as plan_id, tpfc.functional_case_id as case_id
+                    from spotter_aegis.test_plan grp
+                    inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                    inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                    where grp.type = 'GROUP'
+                      and grp.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+                ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                  and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+                inner join (
+                    select plan_id, case_id, min(create_time) as first_time
+                    from spotter_efficiency.case_execution_record
+                    group by plan_id, case_id
+                ) first_t on first_t.plan_id COLLATE utf8mb4_general_ci = cer.plan_id COLLATE utf8mb4_general_ci
+                  and first_t.case_id COLLATE utf8mb4_general_ci = cer.case_id COLLATE utf8mb4_general_ci
+                  and first_t.first_time = cer.create_time
+                where cer.exec_result in ('SUCCESS','PASS')
+            ) fp)) as firstPassCount,
+            sum((select count(*) from (
+                select distinct cer.plan_id, cer.case_id
+                from spotter_efficiency.case_execution_record cer
+                inner join (
+                    select tp.id as plan_id, tpfc.functional_case_id as case_id
+                    from spotter_aegis.test_plan grp
+                    inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                    inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                    where grp.type = 'GROUP'
+                      and grp.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+                ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                  and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+            ) tot)) as totalExecutedCountFromCer,
+            avg(case when (select count(*) from (
+                select distinct cer.plan_id, cer.case_id
+                from spotter_efficiency.case_execution_record cer
+                inner join (
+                    select tp.id as plan_id, tpfc.functional_case_id as case_id
+                    from spotter_aegis.test_plan grp
+                    inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                    inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                    where grp.type = 'GROUP'
+                      and grp.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+                ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                  and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+            ) tot) > 0
+                then 100.0 * (select count(*) from (
+                    select distinct cer.plan_id, cer.case_id
+                    from spotter_efficiency.case_execution_record cer
+                    inner join (
+                        select tp.id as plan_id, tpfc.functional_case_id as case_id
+                        from spotter_aegis.test_plan grp
+                        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                        where grp.type = 'GROUP'
+                          and grp.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+                    ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                      and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+                    inner join (
+                        select plan_id, case_id, min(create_time) as first_time
+                        from spotter_efficiency.case_execution_record
+                        group by plan_id, case_id
+                    ) first_t on first_t.plan_id COLLATE utf8mb4_general_ci = cer.plan_id COLLATE utf8mb4_general_ci
+                      and first_t.case_id COLLATE utf8mb4_general_ci = cer.case_id COLLATE utf8mb4_general_ci
+                      and first_t.first_time = cer.create_time
+                    where cer.exec_result in ('SUCCESS','PASS')
+                ) fp) / (select count(*) from (
+                    select distinct cer.plan_id, cer.case_id
+                    from spotter_efficiency.case_execution_record cer
+                    inner join (
+                        select tp.id as plan_id, tpfc.functional_case_id as case_id
+                        from spotter_aegis.test_plan grp
+                        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                        where grp.type = 'GROUP'
+                          and grp.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+                    ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                      and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+                ) tot)
+                else null end) as avgFirstPassRate,
+            avg(case when (ifnull(mss.frontend_loc_changed, 0) + ifnull(mss.backend_loc_changed, 0)) > 0
+                then (ifnull(mss.frontend_defect_count, 0) + ifnull(mss.backend_defect_count, 0)) * 1000.0 / (ifnull(mss.frontend_loc_changed, 0) + ifnull(mss.backend_loc_changed, 0))
+                else null end) as avgDefectRatePer1k
+        from spotter_efficiency.meego_story_stats mss
+        inner join (
+            select
+                grp.feishu_story_id,
+                count(distinct tpfc.functional_case_id) as case_total_count,
+                count(distinct case when tpfc.last_exec_result is not null and tpfc.last_exec_result != '' and tpfc.last_exec_result != 'PENDING' then tpfc.functional_case_id end) as case_executed_count,
+                count(distinct case when tpfc.last_exec_result = 'SUCCESS' then tpfc.functional_case_id end) as passed_count,
+                min(tp.create_time) as execution_period_start,
+                coalesce(max(tpfc.last_exec_time), max(tp.actual_end_time), max(tp.planned_end_time), max(tp.update_time)) as execution_period_end,
+                case
+                    when max(grp.status) = 'ARCHIVED' then 'ARCHIVED'
+                    when count(distinct tpfc.functional_case_id) = 0 then 'PREPARED'
+                    when count(distinct case when (tpfc.functional_case_id is not null) and (tpfc.last_exec_result is null or tpfc.last_exec_result = '' or tpfc.last_exec_result = 'PENDING') then tpfc.functional_case_id end) = 0 then 'COMPLETED'
+                    else 'UNDERWAY'
+                end as show_status
+            from spotter_aegis.test_plan grp
+            inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+            left join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+            where grp.type = 'GROUP' and grp.feishu_story_id is not null and grp.feishu_story_id != ''
+            group by grp.feishu_story_id
+        ) agg on agg.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+        where 1=1
+        <if test="projectIds != null and !projectIds.isEmpty()">
+            and mss.story_id COLLATE utf8mb4_general_ci in (
+                select distinct grp2.feishu_story_id COLLATE utf8mb4_general_ci from spotter_aegis.test_plan grp2
+                where grp2.type = 'GROUP' and grp2.feishu_story_id is not null and grp2.feishu_story_id != ''
+                and grp2.project_id in
+                <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                    #{pid,jdbcType=VARCHAR}
+                </foreach>
+            )
+        </if>
+        <if test="status != null and status != ''">
+            and agg.show_status = #{status,jdbcType=VARCHAR}
+        </if>
+        <if test="storyIds != null and !storyIds.isEmpty()">
+            and mss.story_id COLLATE utf8mb4_general_ci in
+            <foreach collection="storyIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="executionPeriodStart != null">
+            and (agg.execution_period_end is null or agg.execution_period_end >= #{executionPeriodStart,jdbcType=BIGINT})
+        </if>
+        <if test="executionPeriodEnd != null">
+            and agg.execution_period_start &lt;= #{executionPeriodEnd,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <!-- 筛选项：有关联测试计划组的项目 ID（去重） -->
+    <select id="selectProjectIdsWithLinkedGroup" resultType="java.lang.String">
+        select distinct grp.project_id
+        from spotter_aegis.test_plan grp
+        where grp.type = 'GROUP' and grp.feishu_story_id is not null and grp.feishu_story_id != ''
+        and grp.project_id is not null and grp.project_id != ''
+    </select>
+
+    <!-- 筛选项：已关联测试计划组的需求（id=story_id, name=story_name） -->
+    <select id="selectRequirementOptionsWithLinkedGroup" resultType="io.vanguard.testops.system.dto.sdk.OptionDTO">
+        select mss.story_id as id, mss.story_name as name
+        from spotter_efficiency.meego_story_stats mss
+        inner join (
+            select grp.feishu_story_id
+            from spotter_aegis.test_plan grp
+            where grp.type = 'GROUP' and grp.feishu_story_id is not null and grp.feishu_story_id != ''
+            group by grp.feishu_story_id
+        ) linked on linked.feishu_story_id COLLATE utf8mb4_general_ci = mss.story_id COLLATE utf8mb4_general_ci
+        order by mss.updated_at desc
+    </select>
+
+    <!-- 需求库关键词搜索：从完整需求库 meego_story_stats 按 story_id / story_name 模糊匹配，供门禁补全弹窗选择需求 -->
+    <select id="selectStorySearchByKeyword" resultType="io.vanguard.testops.system.dto.sdk.OptionDTO">
+        select mss.story_id as id, mss.story_name as name
+        from spotter_efficiency.meego_story_stats mss
+        where 1=1
+        <if test="keyword != null and keyword != ''">
+            and (
+                mss.story_id like concat('%', #{keyword,jdbcType=VARCHAR}, '%')
+                or mss.story_name like concat('%', #{keyword,jdbcType=VARCHAR}, '%')
+            )
+        </if>
+        order by mss.updated_at desc
+        limit 50
+    </select>
+
+    <!-- 根据需求 ID 列表批量查需求名称（供门禁列表展示 storyName） -->
+    <select id="selectStoryNamesByIds" resultType="io.vanguard.testops.system.dto.sdk.OptionDTO">
+        select mss.story_id as id, mss.story_name as name
+        from spotter_efficiency.meego_story_stats mss
+        where mss.story_id in
+        <foreach collection="storyIds" item="id" open="(" separator="," close=")">
+            #{id,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <!-- 需求详情 - 用例执行明细：需求→组→计划→用例，按 (计划, 用例) 不去重，每行一条；左连 test_plan_case_metrics / case_execution_record 取执行次数与耗时 -->
+    <select id="selectCaseExecutionDetailByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityCaseExecutionRowVO">
+        select
+            tp.id as planId,
+            tpfc.functional_case_id as caseId,
+            coalesce(trim(fc.name), '') as caseName,
+            sum(coalesce(tpcm.exec_count, 0)) as execCountSum,
+            sum(coalesce(tpcm.total_time_ms, 0)) as totalTimeMs,
+            sum(coalesce(cer.exec_duration, 0)) as totalDurationMsFromCer,
+            sum(case when cer.exec_duration is not null and cer.exec_duration > 0 then 1 else 0 end) as durationPositiveCount,
+            max(cer.exec_duration) as maxDurationMs,
+            sum(case when cer.exec_result in ('SUCCESS','PASS') then 1 else 0 end) as successCountRecord,
+            sum(case when cer.exec_result is not null and cer.exec_result != '' and cer.exec_result not in ('SUCCESS','PASS') then 1 else 0 end) as failCountRecord,
+            substring_index(group_concat(tpcm.last_exec_result order by tpcm.update_time desc), ',', 1) as lastExecResultMetrics,
+            max(tpfc.last_exec_result) as lastExecResultTpfc
+        from spotter_aegis.test_plan grp
+        inner join spotter_aegis.test_plan tp on tp.group_id COLLATE utf8mb4_general_ci = grp.id COLLATE utf8mb4_general_ci and tp.type COLLATE utf8mb4_general_ci = CONVERT('TEST_PLAN' USING utf8mb4) COLLATE utf8mb4_general_ci
+        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+        left join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+            and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+        left join spotter_efficiency.case_execution_record cer on cer.plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci and cer.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+        left join functional_case fc on fc.id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci and fc.deleted = 0
+        where grp.type COLLATE utf8mb4_general_ci = CONVERT('GROUP' USING utf8mb4) COLLATE utf8mb4_general_ci and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+        group by tp.id, tpfc.functional_case_id, coalesce(trim(fc.name), '')
+        order by tp.id, execCountSum desc, caseId
+    </select>
+
+    <!-- 需求详情 - 执行人贡献度：按 (计划,用例) 归属到首次执行人，各执行人用例数之和=已执行(计划+用例)数，与总用例数口径一致 -->
+    <select id="selectExecutorContributionByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityExecutorContributionVO">
+        select
+            cer.executor_id as executorId,
+            count(*) as caseCount
+        from spotter_efficiency.case_execution_record cer
+        inner join (
+            select tp.id as plan_id, tpfc.functional_case_id as case_id
+            from spotter_aegis.test_plan grp
+            inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+            inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+            where grp.type = 'GROUP'
+              and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+        ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+            and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+        inner join (
+            select plan_id, case_id, min(create_time) as first_time
+            from spotter_efficiency.case_execution_record
+            group by plan_id, case_id
+        ) first_t on first_t.plan_id COLLATE utf8mb4_general_ci = cer.plan_id COLLATE utf8mb4_general_ci
+            and first_t.case_id COLLATE utf8mb4_general_ci = cer.case_id COLLATE utf8mb4_general_ci
+            and first_t.first_time = cer.create_time
+        where cer.executor_id is not null and cer.executor_id != ''
+        group by cer.executor_id
+        order by caseCount desc
+    </select>
+
+    <!-- 需求详情 - 测试用例执行阻塞原因分布：需求→组→计划→用例→test_plan_case_metrics，按 block_reason 统计 -->
+    <select id="selectBlockReasonDistributionByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityReasonDistributionVO">
+        select
+            tpcm.block_reason as reasonCode,
+            count(*) as count
+        from spotter_aegis.test_plan grp
+        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+        inner join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id = tp.id and tpcm.case_id = tpfc.functional_case_id
+        where grp.type = 'GROUP'
+          and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+          and tpcm.block_reason is not null and trim(tpcm.block_reason) != ''
+        group by tpcm.block_reason
+        order by count desc
+    </select>
+
+    <!-- 需求详情 - 用例变更原因分布：需求→组→计划→用例，关联 case_change_log 按 change_reason 统计 -->
+    <select id="selectChangeReasonDistributionByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityReasonDistributionVO">
+        select
+            ccl.change_reason as reasonCode,
+            count(*) as count
+        from spotter_aegis.test_plan grp
+        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+        inner join spotter_efficiency.case_change_log ccl on ccl.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+        where grp.type = 'GROUP'
+          and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+        group by ccl.change_reason
+        order by count desc
+    </select>
+
+    <!-- 需求详情 - 用例执行趋势：需求→组→计划→用例，关联 case_execution_record 按日统计通过/失败/阻塞，最近 30 天 -->
+    <select id="selectExecutionTrendByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityExecutionTrendVO">
+        select
+            date_format(from_unixtime(cer.exec_start_time / 1000), '%Y-%m-%d') as execDate,
+            sum(case when cer.exec_result in ('SUCCESS','PASS') then 1 else 0 end) as passed,
+            sum(case when cer.exec_result is not null and cer.exec_result != '' and cer.exec_result not in ('SUCCESS','PASS','BLOCKED') then 1 else 0 end) as failed,
+            sum(case when cer.exec_result = 'BLOCKED' then 1 else 0 end) as blocked
+        from spotter_aegis.test_plan grp
+        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+        inner join spotter_efficiency.case_execution_record cer on cer.plan_id = tp.id and cer.case_id = tpfc.functional_case_id
+        where grp.type = 'GROUP'
+          and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+          and cer.exec_start_time is not null
+          and cer.exec_start_time >= (unix_timestamp() - 30 * 86400) * 1000
+        group by date_format(from_unixtime(cer.exec_start_time / 1000), '%Y-%m-%d')
+        order by execDate
+    </select>
+
+    <!-- 需求详情 - 用例优先级分布：按 (计划,用例) 不去重，需求→组→计划→用例→functional_case，关联 functional_priority 自定义字段 -->
+    <select id="selectPriorityDistributionByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityReasonDistributionVO">
+        select
+            coalesce(nullif(trim(fccf.value), ''), 'P2') as reasonCode,
+            count(*) as count
+        from spotter_aegis.test_plan grp
+        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+        inner join functional_case fc on fc.id = tpfc.functional_case_id and fc.deleted = 0
+        left join functional_case_custom_field fccf on fccf.case_id = fc.id
+        left join custom_field cf on cf.id = fccf.field_id and cf.name = 'functional_priority' and cf.scene = 'FUNCTIONAL' and (cf.internal = 1 or cf.internal = true)
+        where grp.type = 'GROUP'
+          and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+        group by coalesce(nullif(trim(fccf.value), ''), 'P2')
+        order by field(reasonCode, 'P0', 'P1', 'P2', 'P3')
+    </select>
+
+    <!-- 需求详情 - 复用指标：需求→组→计划→用例，按用例去重后与 case_metrics_detail 聚合（与效能大屏口径一致） -->
+    <select id="selectReuseMetricsByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityReuseMetricsVO">
+        select
+            (select count(distinct tpfc2.functional_case_id)
+             from spotter_aegis.test_plan grp2
+             inner join spotter_aegis.test_plan tp2 on tp2.group_id = grp2.id and tp2.type = 'TEST_PLAN'
+             inner join spotter_aegis.test_plan_functional_case tpfc2 on tpfc2.test_plan_id = tp2.id
+             where grp2.type = 'GROUP'
+               and grp2.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+            ) as totalCaseCount,
+            (select count(*) from (
+                select tpfc.functional_case_id
+                from spotter_aegis.test_plan grp
+                inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                left join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+                left join spotter_efficiency.case_metrics_detail cmd on cmd.case_id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+                where grp.type = 'GROUP' and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+                group by tpfc.functional_case_id
+                having max(cmd.case_source_type) in ('REUSE','COPY')
+            ) reused_cases) as reusedCaseCount,
+            coalesce(sum(t.cs_score), 0) as totalCsTotal,
+            coalesce(sum(case when t.case_source_type in ('REUSE','COPY') then t.cs_score else 0 end), 0) as reusedCsTotal,
+            coalesce(sum(
+                case when t.case_source_type in ('REUSE','COPY') then
+                    coalesce(nullif(t.saved_write_ms, 0), t.algo_expected_write_ms)
+                else 0 end
+            ), 0) as absoluteTimeSavingsMs
+        from (
+            select
+                tpfc.functional_case_id,
+                max(cmd.cs_score) as cs_score,
+                max(cmd.case_source_type) as case_source_type,
+                max(cmd.saved_write_ms) as saved_write_ms,
+                max(cmd.algo_expected_write_ms) as algo_expected_write_ms
+            from spotter_aegis.test_plan grp
+            inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+            inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+            left join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+                and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+            left join spotter_efficiency.case_metrics_detail cmd on cmd.case_id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+            where grp.type = 'GROUP'
+              and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+            group by tpfc.functional_case_id
+        ) t
+    </select>
+
+    <!-- 需求详情 - 预期编写/执行工时按复杂度分级：需求→组→计划→tpcm→case_metrics_detail，L1/L2/L3/L4 -->
+    <select id="selectExpectedTimeByLevelByStoryId" resultType="java.util.Map">
+        select
+            cmd.complexity_level as complexity_level,
+            coalesce(sum(cmd.algo_expected_write_ms), 0) as expected_write_ms,
+            coalesce(sum(cmd.algo_expected_exec_ms), 0) as expected_exec_ms
+        from spotter_aegis.test_plan grp
+        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+        inner join spotter_efficiency.test_plan_case_metrics tpcm on tp.id COLLATE utf8mb4_general_ci = tpcm.test_plan_id COLLATE utf8mb4_general_ci
+        inner join spotter_efficiency.case_metrics_detail cmd on tpcm.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+        where grp.type = 'GROUP'
+          and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+          and cmd.complexity_level is not null and cmd.complexity_level != ''
+        group by cmd.complexity_level
+    </select>
+
+    <!-- 需求详情 - 实际编写时长：需求关联的 meego_story_stats.test_analysis_time（人天×8h→分钟） -->
+    <select id="selectActualWriteMinutesByStoryId" resultType="long">
+        select coalesce(round(mss.test_analysis_time * 8 * 60), 0)
+        from spotter_efficiency.meego_story_stats mss
+        where mss.story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+          and mss.test_analysis_time is not null and mss.test_analysis_time > 0
+        limit 1
+    </select>
+
+    <!-- 需求详情 - 实际执行时长：需求下测试计划组内 test_plan_metrics 汇总（毫秒） -->
+    <select id="selectActualExecMsByStoryId" resultType="long">
+        select coalesce(sum(tpm.total_actual_exec_ms), 0)
+        from spotter_efficiency.test_plan_metrics tpm
+        inner join spotter_aegis.test_plan tp on tpm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+        where tp.group_id in (
+            select grp.id from spotter_aegis.test_plan grp
+            where grp.type = 'GROUP'
+              and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+        )
+        and tp.type = 'TEST_PLAN'
+    </select>
+
+    <!-- 需求详情 - 其它效益指标：平均UQS（由 Service 按效能大屏公式计算）、首次通过数/总执行数（从 case_execution_record 按 plan_id+case_id 取最早一条执行结果） -->
+    <select id="selectBenefitMetricsByStoryId" resultType="io.vanguard.testops.requirementquality.dto.RequirementQualityBenefitMetricsVO">
+        select
+            null as avgUqsScore,
+            (select count(*)
+             from (
+                 select distinct cer.plan_id, cer.case_id
+                 from spotter_efficiency.case_execution_record cer
+                 inner join (
+                     select tp.id as plan_id, tpfc.functional_case_id as case_id
+                     from spotter_aegis.test_plan grp
+                     inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                     inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                     where grp.type = 'GROUP'
+                       and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+                 ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                     and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+                 inner join (
+                     select plan_id, case_id, min(create_time) as first_time
+                     from spotter_efficiency.case_execution_record
+                     group by plan_id, case_id
+                 ) first_t on first_t.plan_id COLLATE utf8mb4_general_ci = cer.plan_id COLLATE utf8mb4_general_ci
+                     and first_t.case_id COLLATE utf8mb4_general_ci = cer.case_id COLLATE utf8mb4_general_ci
+                     and first_t.first_time = cer.create_time
+                 where cer.exec_result in ('SUCCESS','PASS')
+             ) fp
+            ) as firstPassCount,
+            (select count(*)
+             from (
+                 select distinct cer.plan_id, cer.case_id
+                 from spotter_efficiency.case_execution_record cer
+                 inner join (
+                     select tp.id as plan_id, tpfc.functional_case_id as case_id
+                     from spotter_aegis.test_plan grp
+                     inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                     inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                     where grp.type = 'GROUP'
+                       and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+                 ) plan_case on cer.plan_id COLLATE utf8mb4_general_ci = plan_case.plan_id COLLATE utf8mb4_general_ci
+                     and cer.case_id COLLATE utf8mb4_general_ci = plan_case.case_id COLLATE utf8mb4_general_ci
+             ) tot
+            ) as totalExecutedCount
+    </select>
+
+    <!-- 需求详情 - UQS 子项原始数据（与效能大屏一致：缺陷发现率分母/分子、可执行率分母/分子，用于 Service 计算 UQS=0.4*缺陷发现率+0.3*可执行率+0.3*复用率） -->
+    <select id="selectBenefitUqsRawByStoryId" resultType="java.util.Map">
+        select
+            (select count(distinct tpcm.case_id)
+             from spotter_aegis.test_plan grp
+             inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+             inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+             inner join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+                 and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+             where grp.type = 'GROUP'
+               and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+               and tpcm.exec_count > 0
+            ) as total_exec_cases,
+            (select COALESCE(SUM(tpm.total_defect_count), 0)
+             from spotter_efficiency.test_plan_metrics tpm
+             where tpm.test_plan_id in (
+                 select distinct tp.id
+                 from spotter_aegis.test_plan grp
+                 inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+                 inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+                 inner join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+                     and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+                 where grp.type = 'GROUP'
+                   and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+             )
+            ) as total_defects,
+            (select coalesce(sum(tpcm.exec_count), 0)
+             from spotter_aegis.test_plan grp
+             inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+             inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+             inner join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+                 and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+             where grp.type = 'GROUP'
+               and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+            ) as total_exec_count,
+            (select count(distinct tpcm.case_id)
+             from spotter_aegis.test_plan grp
+             inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+             inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+             inner join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+                 and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+             where grp.type = 'GROUP'
+               and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+               and (tpcm.is_blocked_run = 0 or tpcm.is_blocked_run is null)
+               and tpcm.last_exec_result = 'SUCCESS'
+            ) as success_without_block_count
+    </select>
+
+    <!-- 需求详情 - 变更热度原始数据（用例新增率：分子=计划首次执行后加入的用例数去重，分母=组内用例去重；用例变更热度：分子=有变更记录的用例数去重，分母=组内用例去重） -->
+    <select id="selectChangeHeatRawByStoryId" resultType="java.util.Map">
+        select
+            (select count(distinct tpfc.functional_case_id)
+             from spotter_aegis.test_plan grp
+             inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+             inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+             inner join (
+                 select tp2.id as plan_id, min(cer.exec_start_time) as first_exec_time
+                 from spotter_aegis.test_plan grp2
+                 inner join spotter_aegis.test_plan tp2 on tp2.group_id = grp2.id and tp2.type = 'TEST_PLAN'
+                 inner join spotter_efficiency.case_execution_record cer on cer.plan_id = tp2.id
+                 where grp2.type = 'GROUP'
+                   and grp2.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+                 group by tp2.id
+             ) pfe on pfe.plan_id = tp.id
+             where grp.type = 'GROUP'
+               and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+               and tpfc.create_time > pfe.first_exec_time
+            ) as new_case_count,
+            (select count(distinct tpfc.functional_case_id)
+             from spotter_aegis.test_plan grp
+             inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+             inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+             where grp.type = 'GROUP'
+               and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+            ) as total_case_count,
+            (select count(distinct tpfc.functional_case_id)
+             from spotter_aegis.test_plan grp
+             inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+             inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+             inner join spotter_efficiency.case_change_log ccl on ccl.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+                 and (ccl.change_reason is null or ccl.change_reason != 'CASE_COPY')
+             where grp.type = 'GROUP'
+               and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+            ) as modified_case_count
+    </select>
+
+    <!-- 需求详情 - 执行效率原始数据（与效能大屏一致：平均执行时长=总时长/执行次数，手动执行热度=高频CS总分/总CS总分；需求下计划组内 tpcm+cmd 聚合） -->
+    <select id="selectExecutionEfficiencyRawByStoryId" resultType="java.util.Map">
+        select
+            coalesce(sum(tpcm.total_time_ms), 0) as total_duration_ms,
+            coalesce(sum(tpcm.exec_count), 0) as total_exec_count,
+            sum(case when tpcm.exec_count >= 3 then coalesce(cmd.cs_score, 0) else 0 end) as high_freq_cs_total,
+            sum(coalesce(cmd.cs_score, 0)) as all_exec_cs_total
+        from spotter_aegis.test_plan grp
+        inner join spotter_aegis.test_plan tp on tp.group_id = grp.id and tp.type = 'TEST_PLAN'
+        inner join spotter_aegis.test_plan_functional_case tpfc on tpfc.test_plan_id = tp.id
+        inner join spotter_efficiency.test_plan_case_metrics tpcm on tpcm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+            and tpcm.case_id COLLATE utf8mb4_general_ci = tpfc.functional_case_id COLLATE utf8mb4_general_ci
+        left join spotter_efficiency.case_metrics_detail cmd on cmd.case_id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+        where grp.type = 'GROUP'
+          and grp.feishu_story_id COLLATE utf8mb4_general_ci = CONVERT(#{storyId,jdbcType=VARCHAR} USING utf8mb4) COLLATE utf8mb4_general_ci
+    </select>
+
+    <!--
+        按 story_id 从 requirement_change_stats 聚合（关联流水线时由本逻辑计算，不依赖别处落库）：
+        - 总发布次数 = 关联该需求的流水线条数（distinct pipeline_id）
+        - deploy_result 仅 SUCCESS/FAILED；失败次数按 deploy_result='FAILED' 统计；回滚次数按 is_rollback=1，热修次数按 is_hotfix=1。
+        - 变更失败率分子 = 回滚次数 + 紧急补丁次数（is_rollback=1 或 is_hotfix=1 的 distinct pipeline_id 数），在 Service 中 / 总发布次数×100 写回
+    -->
+    <select id="selectStoryLocDeployAgg" resultType="io.vanguard.testops.requirementquality.dto.StoryLocDeployAggVO">
+        select
+            coalesce(sum(case when endpoint_type = 'FRONTEND' then ifnull(loc_valid, 0) else 0 end), 0) as frontendLocChanged,
+            coalesce(sum(case when endpoint_type = 'BACKEND' then ifnull(loc_valid, 0) else 0 end), 0) as backendLocChanged,
+            count(distinct pipeline_id) as deployTotalCount,
+            count(distinct case when (ifnull(is_rollback, 0) = 1 or ifnull(is_hotfix, 0) = 1) then pipeline_id end) as deployFailureCount,
+            max(deploy_time) as lastDeployTime
+        from spotter_efficiency.requirement_change_stats
+        where story_id = #{storyId,jdbcType=VARCHAR}
+    </select>
+
+    <!-- 将聚合结果写回 meego_story_stats（仅更新已存在的 story_id，不存在则 0 行更新） -->
+    <update id="updateMeegoStoryStatsLocDeploy">
+        update spotter_efficiency.meego_story_stats
+        set frontend_loc_changed = #{frontendLocChanged,jdbcType=INTEGER},
+            backend_loc_changed = #{backendLocChanged,jdbcType=INTEGER},
+            deploy_total_count = #{deployTotalCount,jdbcType=INTEGER},
+            deploy_failure_count = #{deployFailureCount,jdbcType=INTEGER},
+            last_deploy_time = #{lastDeployTime,jdbcType=BIGINT},
+            change_failure_rate = #{changeFailureRate,jdbcType=DECIMAL}
+        where story_id = #{storyId,jdbcType=VARCHAR}
+    </update>
+</mapper>

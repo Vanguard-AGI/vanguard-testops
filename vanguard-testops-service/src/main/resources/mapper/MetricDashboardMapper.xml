@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.MetricDashboardMapper">
+
+  <!-- ResultMap for nested objects -->
+  <resultMap id="ProjectOverviewResultMap" type="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO">
+    <id property="projectId" column="projectId" />
+    <result property="avgUQS" column="avgUQS" />
+    <result property="firstPassRate" column="firstPassRate" />
+    <result property="totalWriteComplexity" column="totalWriteComplexity" />
+    <result property="totalExecComplexity" column="totalExecComplexity" />
+    <result property="avgComplexity" column="avgComplexity" />
+    <result property="complexityVariance" column="complexityVariance" />
+    <result property="avgWriteTimeDeviation" column="avgWriteTimeDeviation" />
+    <result property="avgExecTimeDeviation" column="avgExecTimeDeviation" />
+    <result property="reuseRateByCount" column="reuseRateByCount" />
+    <result property="reuseRateByWorkload" column="reuseRateByWorkload" />
+    <result property="absoluteTimeSavings" column="absoluteTimeSavings" />
+    <result property="caseGrowthRate" column="caseGrowthRate" />
+    <result property="caseChangeHeat" column="caseChangeHeat" />
+    <result property="avgCaseExecDuration" column="avgCaseExecDuration" />
+    <result property="manualCaseExecHeat" column="manualCaseExecHeat" />
+    <result property="totalCaseCount" column="totalCaseCount" />
+    <!-- Top frequent cases – stored as JSON string, will be parsed later -->
+    <result property="topFrequentCasesRaw" column="topFrequentCases" />
+    <!-- TimeByLevel nested -->
+    <association property="expectedWriteTime" javaType="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO$TimeByLevel">
+      <result property="low" column="expectedWriteTimeLow" />
+      <result property="medium" column="expectedWriteTimeMedium" />
+      <result property="high" column="expectedWriteTimeHigh" />
+    </association>
+    <association property="actualWriteTime" javaType="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO$TimeByLevel">
+      <result property="low" column="actualWriteTimeLow" />
+      <result property="medium" column="actualWriteTimeMedium" />
+      <result property="high" column="actualWriteTimeHigh" />
+    </association>
+    <association property="expectedExecTime" javaType="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO$TimeByLevel">
+      <result property="low" column="expectedExecTimeLow" />
+      <result property="medium" column="expectedExecTimeMedium" />
+      <result property="high" column="expectedExecTimeHigh" />
+    </association>
+    <association property="actualExecTime" javaType="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO$TimeByLevel">
+      <result property="low" column="actualExecTimeLow" />
+      <result property="medium" column="actualExecTimeMedium" />
+      <result property="high" column="actualExecTimeHigh" />
+    </association>
+    <!-- DeviationByLevel nested -->
+    <association property="writeTimeDeviationByLevel" javaType="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO$DeviationByLevel">
+      <result property="low" column="writeTimeDeviationLow" />
+      <result property="medium" column="writeTimeDeviationMedium" />
+      <result property="high" column="writeTimeDeviationHigh" />
+    </association>
+    <association property="execTimeDeviationByLevel" javaType="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO$DeviationByLevel">
+      <result property="low" column="execTimeDeviationLow" />
+      <result property="medium" column="execTimeDeviationMedium" />
+      <result property="high" column="execTimeDeviationHigh" />
+    </association>
+  </resultMap>
+
+  <select id="selectProjectOverview" resultMap="ProjectOverviewResultMap" parameterType="string">
+    SELECT
+      #{projectId} AS projectId,
+      AVG(fc.uqs_score) AS avgUQS,
+      SUM(CASE WHEN fc.first_pass = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(fc.id),0) AS firstPassRate,
+      SUM(fc.complexity_score) AS totalWriteComplexity,
+      SUM(fc.exec_complexity_score) AS totalExecComplexity,
+      AVG(fc.complexity_score) AS avgComplexity,
+      VAR_POP(fc.complexity_score) AS complexityVariance,
+      AVG(fc.write_time_deviation) AS avgWriteTimeDeviation,
+      AVG(fc.exec_time_deviation) AS avgExecTimeDeviation,
+      SUM(CASE WHEN fc.complexity_level = 'LOW' THEN fc.expected_write_time ELSE 0 END) AS expectedWriteTimeLow,
+      SUM(CASE WHEN fc.complexity_level = 'MEDIUM' THEN fc.expected_write_time ELSE 0 END) AS expectedWriteTimeMedium,
+      SUM(CASE WHEN fc.complexity_level = 'HIGH' THEN fc.expected_write_time ELSE 0 END) AS expectedWriteTimeHigh,
+      SUM(CASE WHEN fc.complexity_level = 'LOW' THEN fc.actual_write_time ELSE 0 END) AS actualWriteTimeLow,
+      SUM(CASE WHEN fc.complexity_level = 'MEDIUM' THEN fc.actual_write_time ELSE 0 END) AS actualWriteTimeMedium,
+      SUM(CASE WHEN fc.complexity_level = 'HIGH' THEN fc.actual_write_time ELSE 0 END) AS actualWriteTimeHigh,
+      SUM(CASE WHEN fc.complexity_level = 'LOW' THEN fc.write_time_deviation ELSE 0 END) AS writeTimeDeviationLow,
+      SUM(CASE WHEN fc.complexity_level = 'MEDIUM' THEN fc.write_time_deviation ELSE 0 END) AS writeTimeDeviationMedium,
+      SUM(CASE WHEN fc.complexity_level = 'HIGH' THEN fc.write_time_deviation ELSE 0 END) AS writeTimeDeviationHigh,
+      SUM(CASE WHEN fc.complexity_level = 'LOW' THEN fc.exec_time_deviation ELSE 0 END) AS execTimeDeviationLow,
+      SUM(CASE WHEN fc.complexity_level = 'MEDIUM' THEN fc.exec_time_deviation ELSE 0 END) AS execTimeDeviationMedium,
+      SUM(CASE WHEN fc.complexity_level = 'HIGH' THEN fc.exec_time_deviation ELSE 0 END) AS execTimeDeviationHigh,
+      SUM(CASE WHEN fc.is_reused = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(fc.id),0) AS reuseRateByCount,
+      SUM(CASE WHEN fc.is_reused = true THEN fc.complexity_score ELSE 0 END) * 100.0 / NULLIF(SUM(fc.complexity_score),0) AS reuseRateByWorkload,
+      SUM(fc.reuse_time_savings) AS absoluteTimeSavings,
+      SUM(fc.new_cases) * 100.0 / NULLIF(COUNT(fc.id),0) AS caseGrowthRate,
+      (SELECT COUNT(*) FROM spotter_efficiency.case_change_log WHERE project_id = #{projectId}) AS caseChangeHeat,
+      AVG(fc.exec_duration) AS avgCaseExecDuration,
+      SUM(CASE WHEN fc.is_manual = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(fc.id),0) AS manualCaseExecHeat,
+      COUNT(fc.id) AS totalCaseCount,
+      (SELECT GROUP_CONCAT(json_str SEPARATOR ',') FROM (
+          SELECT JSON_OBJECT('caseId', fc2.id, 'caseName', fc2.name, 'execCount', fc2.exec_count, 'complexity', fc2.complexity_score) as json_str
+          FROM functional_case fc2
+          WHERE fc2.project_id = #{projectId}
+          ORDER BY fc2.exec_count DESC
+          LIMIT 5
+      ) t) AS topFrequentCasesRaw
+    FROM functional_case fc
+    WHERE fc.project_id = #{projectId}
+    GROUP BY fc.project_id
+  </select>
+
+  <select id="selectPersonalStats" resultType="io.vanguard.testops.functional.dto.dashboard.PersonalStatsDTO" parameterType="string">
+    SELECT * FROM personal_stats WHERE project_id = #{projectId}
+  </select>
+
+</mapper>

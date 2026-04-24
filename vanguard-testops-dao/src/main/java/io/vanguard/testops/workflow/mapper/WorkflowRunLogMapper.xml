@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowRunLogMapper">
+
+    <resultMap id="WorkflowRunLogResultMap" type="io.vanguard.testops.workflow.domain.WorkflowRunLog">
+        <id column="log_id" property="logId"/>
+        <result column="run_id" property="runId"/>
+        <result column="run_step_id" property="runStepId"/>
+        <result column="step_id" property="stepId"/>
+        <result column="level" property="level"/>
+        <result column="content" property="content"/>
+        <result column="log_time" property="logTime"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- 根据运行ID查询日志列表 -->
+    <select id="selectByRunId" resultMap="WorkflowRunLogResultMap">
+        SELECT * FROM workflow_run_log 
+        WHERE run_id = #{runId} 
+        ORDER BY log_time ASC, log_id ASC
+    </select>
+
+    <!-- 根据运行步骤ID查询日志列表 -->
+    <select id="selectByRunStepId" resultMap="WorkflowRunLogResultMap">
+        SELECT * FROM workflow_run_log 
+        WHERE run_step_id = #{runStepId} 
+        ORDER BY log_time ASC, log_id ASC
+    </select>
+
+    <!-- 根据运行ID和运行步骤ID查询日志列表 -->
+    <select id="selectByRunIdAndRunStepId" resultMap="WorkflowRunLogResultMap">
+        SELECT * FROM workflow_run_log 
+        WHERE run_id = #{runId} AND run_step_id = #{runStepId}
+        ORDER BY log_time ASC, log_id ASC
+    </select>
+
+    <!-- 批量插入日志 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO workflow_run_log (
+            run_id, run_step_id, step_id,
+            level, content, log_time, create_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.runId},
+                #{item.runStepId},
+                #{item.stepId},
+                #{item.level},
+                #{item.content},
+                #{item.logTime},
+                #{item.createTime}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 根据运行ID删除所有日志 -->
+    <delete id="deleteByRunId">
+        DELETE FROM workflow_run_log WHERE run_id = #{runId}
+    </delete>
+
+</mapper>
+

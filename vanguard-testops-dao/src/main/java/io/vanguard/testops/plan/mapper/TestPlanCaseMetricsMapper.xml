@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.plan.mapper.TestPlanCaseMetricsMapper">
+  <resultMap id="BaseResultMap" type="io.vanguard.testops.plan.domain.TestPlanCaseMetrics">
+    <id column="id" jdbcType="VARCHAR" property="id" />
+    <result column="test_plan_id" jdbcType="VARCHAR" property="testPlanId" />
+    <result column="case_id" jdbcType="VARCHAR" property="caseId" />
+    <result column="project_id" jdbcType="VARCHAR" property="projectId" />
+    <result column="case_source_type" jdbcType="VARCHAR" property="caseSourceType" />
+    <result column="modification_cost_ms" jdbcType="BIGINT" property="modificationCostMs" />
+    <result column="saved_write_ms" jdbcType="BIGINT" property="savedWriteMs" />
+    <result column="exec_count" jdbcType="INTEGER" property="execCount" />
+    <result column="first_exec_time" jdbcType="BIGINT" property="firstExecTime" />
+    <result column="first_exec_result" jdbcType="VARCHAR" property="firstExecResult" />
+    <result column="last_exec_result" jdbcType="VARCHAR" property="lastExecResult" />
+    <result column="is_blocked_run" jdbcType="BIT" property="isBlockedRun" />
+    <result column="block_reason" jdbcType="VARCHAR" property="blockReason" />
+    <result column="snapshot_cs_score" jdbcType="DECIMAL" property="snapshotCsScore" />
+    <result column="snapshot_level" jdbcType="VARCHAR" property="snapshotLevel" />
+    <result column="create_time" jdbcType="BIGINT" property="createTime" />
+    <result column="update_time" jdbcType="BIGINT" property="updateTime" />
+    <result column="actual_exec_ms" jdbcType="BIGINT" property="actualExecMs" />
+    <result column="actual_reading_ms" jdbcType="BIGINT" property="actualReadingMs" />
+    <result column="is_batch_fill" jdbcType="INTEGER" property="isBatchFill" />
+    <result column="focus_out_count" jdbcType="INTEGER" property="focusOutCount" />
+    <result column="filtered_time_ms" jdbcType="BIGINT" property="filteredTimeMs" />
+    <result column="total_time_ms" jdbcType="BIGINT" property="totalTimeMs" />
+  </resultMap>
+
+  <sql id="Base_Column_List">
+    id, test_plan_id, case_id, project_id, case_source_type, modification_cost_ms, saved_write_ms, 
+    exec_count, first_exec_time, first_exec_result, last_exec_result, 
+    is_blocked_run, block_reason, snapshot_cs_score, snapshot_level, create_time, 
+    update_time, actual_exec_ms, actual_reading_ms, is_batch_fill, focus_out_count, filtered_time_ms, 
+    total_time_ms
+  </sql>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.test_plan_case_metrics
+    where id = #{id,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectByPlanAndCase" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.test_plan_case_metrics
+    where test_plan_id = #{testPlanId,jdbcType=VARCHAR}
+      and case_id = #{caseId,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectByTestPlanId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.test_plan_case_metrics
+    where test_plan_id = #{testPlanId,jdbcType=VARCHAR}
+  </select>
+
+  <insert id="insert" parameterType="io.vanguard.testops.plan.domain.TestPlanCaseMetrics">
+    insert into spotter_efficiency.test_plan_case_metrics (id, test_plan_id, case_id, 
+      project_id, case_source_type, modification_cost_ms, 
+      saved_write_ms, exec_count, first_exec_time, 
+      first_exec_result, last_exec_result, 
+      is_blocked_run, block_reason, snapshot_cs_score, 
+      snapshot_level, create_time, update_time,
+      actual_exec_ms, actual_reading_ms, is_batch_fill, focus_out_count, filtered_time_ms, 
+      total_time_ms
+      )
+    values (#{id,jdbcType=VARCHAR}, #{testPlanId,jdbcType=VARCHAR}, #{caseId,jdbcType=VARCHAR}, 
+      #{projectId,jdbcType=VARCHAR}, #{caseSourceType,jdbcType=VARCHAR}, #{modificationCostMs,jdbcType=BIGINT}, 
+      #{savedWriteMs,jdbcType=BIGINT}, #{execCount,jdbcType=INTEGER}, #{firstExecTime,jdbcType=BIGINT}, 
+      #{firstExecResult,jdbcType=VARCHAR}, #{lastExecResult,jdbcType=VARCHAR}, 
+      #{isBlockedRun,jdbcType=BIT}, #{blockReason,jdbcType=VARCHAR}, #{snapshotCsScore,jdbcType=DECIMAL}, 
+      #{snapshotLevel,jdbcType=VARCHAR}, #{createTime,jdbcType=BIGINT}, #{updateTime,jdbcType=BIGINT},
+      #{actualExecMs,jdbcType=BIGINT}, #{actualReadingMs,jdbcType=BIGINT}, #{isBatchFill,jdbcType=INTEGER}, 
+      #{focusOutCount,jdbcType=INTEGER}, #{filteredTimeMs,jdbcType=BIGINT}, #{totalTimeMs,jdbcType=BIGINT}
+      )
+  </insert>
+
+  <update id="updateByPrimaryKey" parameterType="io.vanguard.testops.plan.domain.TestPlanCaseMetrics">
+    update spotter_efficiency.test_plan_case_metrics
+    set test_plan_id = #{testPlanId,jdbcType=VARCHAR},
+      case_id = #{caseId,jdbcType=VARCHAR},
+      project_id = #{projectId,jdbcType=VARCHAR},
+      case_source_type = #{caseSourceType,jdbcType=VARCHAR},
+      modification_cost_ms = #{modificationCostMs,jdbcType=BIGINT},
+      saved_write_ms = #{savedWriteMs,jdbcType=BIGINT},
+      exec_count = #{execCount,jdbcType=INTEGER},
+      first_exec_time = #{firstExecTime,jdbcType=BIGINT},
+      first_exec_result = #{firstExecResult,jdbcType=VARCHAR},
+      last_exec_result = #{lastExecResult,jdbcType=VARCHAR},
+      is_blocked_run = #{isBlockedRun,jdbcType=BIT},
+      block_reason = #{blockReason,jdbcType=VARCHAR},
+      snapshot_cs_score = #{snapshotCsScore,jdbcType=DECIMAL},
+      snapshot_level = #{snapshotLevel,jdbcType=VARCHAR},
+      update_time = #{updateTime,jdbcType=BIGINT},
+      actual_exec_ms = #{actualExecMs,jdbcType=BIGINT},
+      actual_reading_ms = #{actualReadingMs,jdbcType=BIGINT},
+      is_batch_fill = #{isBatchFill,jdbcType=INTEGER},
+      focus_out_count = #{focusOutCount,jdbcType=INTEGER},
+      filtered_time_ms = #{filteredTimeMs,jdbcType=BIGINT},
+      total_time_ms = #{totalTimeMs,jdbcType=BIGINT}
+    where id = #{id,jdbcType=VARCHAR}
+  </update>
+  
+  <!-- 查询指定测试计划在指定日期范围内的批量提交用例 -->
+  <select id="selectBatchCasesByPlanAndDate" resultMap="BaseResultMap">
+    select 
+      <include refid="Base_Column_List" />
+    from spotter_efficiency.test_plan_case_metrics
+    where test_plan_id = #{testPlanId,jdbcType=VARCHAR}
+      and is_batch_fill = 1
+      and update_time &gt;= #{startTime,jdbcType=BIGINT}
+      and update_time &lt;= #{endTime,jdbcType=BIGINT}
+  </select>
+</mapper>

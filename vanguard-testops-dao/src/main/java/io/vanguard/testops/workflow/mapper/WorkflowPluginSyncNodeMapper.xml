@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowPluginSyncNodeMapper">
+
+    <resultMap id="WorkflowPluginSyncNodeResultMap" type="io.vanguard.testops.workflow.domain.WorkflowPluginSyncNode">
+        <id column="node_id" property="nodeId"/>
+        <result column="email" property="email"/>
+        <result column="node_type" property="nodeType"/>
+        <result column="endpoint_data" property="endpointData" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted_time" property="deletedTime"/>
+    </resultMap>
+
+    <!-- 根据用户邮箱查询节点列表（排除已删除） -->
+    <select id="selectByEmail" resultMap="WorkflowPluginSyncNodeResultMap">
+        SELECT * FROM workflow_plugin_sync_node
+        WHERE email = #{email} AND deleted_time IS NULL
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据用户邮箱和节点类型查询节点列表（排除已删除） -->
+    <select id="selectByEmailAndType" resultMap="WorkflowPluginSyncNodeResultMap">
+        SELECT * FROM workflow_plugin_sync_node
+        WHERE email = #{email} AND node_type = #{nodeType} AND deleted_time IS NULL
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>
+

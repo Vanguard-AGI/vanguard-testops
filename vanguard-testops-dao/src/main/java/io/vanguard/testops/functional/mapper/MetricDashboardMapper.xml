@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.MetricDashboardMapper">
+
+    <select id="selectProjectOverview" resultType="io.vanguard.testops.functional.dto.dashboard.ProjectOverviewDTO">
+        SELECT 
+            #{projectId} as projectId,
+            
+            -- UQS质量指标 (2个)
+            AVG(d.uqs_score) as avgUQS,
+            <choose>
+                <when test="projectId != null and projectId != 'ALL'">
+                    (SELECT AVG(first_pass_rate) FROM spotter_efficiency.test_plan_metrics 
+                     WHERE project_id = #{projectId}
+                     <if test="startTime != null"> AND start_time >= #{startTime} </if>
+                     <if test="endTime != null"> AND start_time &lt;= #{endTime} </if>
+                    ) as firstPassRate,
+                </when>
+                <otherwise>
+                    (SELECT AVG(first_pass_rate) FROM spotter_efficiency.test_plan_metrics
+                     WHERE 1=1
+                     <if test="startTime != null"> AND start_time >= #{startTime} </if>
+                     <if test="endTime != null"> AND start_time &lt;= #{endTime} </if>
+                    ) as firstPassRate,
+                </otherwise>
+            </choose>
+            
+            -- 复杂度指标 (4个) - 基于CS分值
+            SUM(d.cs_score) as totalWriteComplexity,
+            SUM(d.cs_score) as totalExecComplexity,
+            AVG(d.cs_score) as avgComplexity,
+            VARIANCE(d.cs_score) as complexityVariance,
+            
+            -- 工时偏差指标 (2个) - 基于算法工时vs实测工时
+            ((SUM(d.platform_actual_write_ms) - SUM(d.algo_expected_write_ms)) / NULLIF(SUM(d.algo_expected_write_ms), 0)) * 100 as avgWriteTimeDeviation,
+            0 as avgExecTimeDeviation,
+            
+            -- 复用降本指标 (3个)
+            (SUM(CASE WHEN d.reuse_count > 0 THEN 1 ELSE 0 END) / GREATEST(COUNT(*), 1)) * 100 as reuseRateByCount,
+            (SUM(CASE WHEN d.reuse_count > 0 THEN d.cs_score ELSE 0 END) / NULLIF(SUM(d.cs_score), 0)) * 100 as reuseRateByWorkload,
+            SUM(CASE WHEN d.reuse_count > 0 THEN d.algo_expected_write_ms / 3600000.0 ELSE 0 END) as absoluteTimeSavings,
+            
+            -- 变更热度指标 (2个)
+            0 as caseGrowthRate,
+            SUM(CASE WHEN d.modify_count > 0 THEN 1 ELSE 0 END) as caseChangeHeat,
+            
+            -- 执行效率指标 (3个)
+            0 as avgCaseExecDuration,
+            0 as manualCaseExecHeat,
+            NULL as topFrequentCasesRaw,
+            
+            -- 统计数据
+            COUNT(*) as totalCaseCount
+            
+        FROM spotter_efficiency.case_metrics_detail d
+        WHERE 1=1
+        <if test="projectId != null and projectId != 'ALL'">
+            AND d.project_id = #{projectId}
+        </if>
+        <if test="userId != null and userId != 'all' and userId != 'ALL'">
+            AND d.create_user = #{userId}
+        </if>
+        <if test="startTime != null">
+            AND d.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND d.create_time &lt;= #{endTime}
+        </if>
+    </select>
+
+    <select id="selectPersonalStats" resultType="io.vanguard.testops.functional.dto.dashboard.PersonalStatsDTO">
+        SELECT 
+            d.create_user as userId,
+            MAX(u.name) as userName,
+            COUNT(d.id) as caseCount,
+            AVG(d.cs_score) as avgComplexity,
+            AVG(d.uqs_score) as avgUqs,
+            SUM(d.platform_actual_write_ms) / 3600000.0 as totalWriteHours
+        FROM spotter_efficiency.case_metrics_detail d
+        LEFT JOIN user u ON d.create_user COLLATE utf8mb4_general_ci = u.id
+        WHERE 1=1
+        <if test="projectId != null and projectId != 'ALL'">
+            AND d.project_id = #{projectId}
+        </if>
+        <if test="startTime != null">
+            AND d.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND d.create_time &lt;= #{endTime}
+        </if>
+        GROUP BY d.create_user
+    </select>
+
+</mapper>

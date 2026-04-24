@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.TestPlanFunctionalCaseActivityMapper">
+
+    <select id="selectExecuteUserIdsInRange" resultType="java.lang.String">
+        SELECT tpf.execute_user
+        FROM spotter_aegis.test_plan_functional_case tpf
+        <if test="projectIds != null and projectIds.size() > 0">
+            INNER JOIN spotter_aegis.test_plan tp ON tpf.test_plan_id = tp.id
+        </if>
+        WHERE tpf.execute_user IS NOT NULL AND tpf.execute_user != ''
+        AND tpf.last_exec_time IS NOT NULL
+        AND tpf.last_exec_time &gt;= #{lastExecTimeStart}
+        AND tpf.last_exec_time &lt;= #{lastExecTimeEnd}
+        <if test="projectIds != null and projectIds.size() > 0">
+            AND tp.project_id IN
+            <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                #{pid}
+            </foreach>
+        </if>
+        <if test="executeUserIds != null and executeUserIds.size() > 0">
+            AND tpf.execute_user IN
+            <foreach collection="executeUserIds" item="uid" open="(" separator="," close=")">
+                #{uid}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="countExecutionInRange" resultType="long">
+        SELECT COUNT(*)
+        FROM spotter_aegis.test_plan_functional_case tpf
+        <if test="projectIds != null and projectIds.size() > 0">
+            INNER JOIN spotter_aegis.test_plan tp ON tpf.test_plan_id = tp.id
+        </if>
+        WHERE tpf.last_exec_time IS NOT NULL
+        <if test="lastExecTimeStart != null">
+            AND tpf.last_exec_time &gt;= #{lastExecTimeStart}
+        </if>
+        <if test="lastExecTimeEnd != null">
+            AND tpf.last_exec_time &lt;= #{lastExecTimeEnd}
+        </if>
+        <if test="projectIds != null and projectIds.size() > 0">
+            AND tp.project_id IN
+            <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                #{pid}
+            </foreach>
+        </if>
+        <if test="executeUser != null and executeUser != ''">
+            AND tpf.execute_user = #{executeUser}
+        </if>
+    </select>
+
+    <select id="countSuccessInRange" resultType="long">
+        SELECT COUNT(*)
+        FROM spotter_aegis.test_plan_functional_case tpf
+        <if test="projectIds != null and projectIds.size() > 0">
+            INNER JOIN spotter_aegis.test_plan tp ON tpf.test_plan_id = tp.id
+        </if>
+        WHERE tpf.last_exec_time IS NOT NULL
+        <if test="lastExecTimeStart != null">
+            AND tpf.last_exec_time &gt;= #{lastExecTimeStart}
+        </if>
+        <if test="lastExecTimeEnd != null">
+            AND tpf.last_exec_time &lt;= #{lastExecTimeEnd}
+        </if>
+        AND tpf.last_exec_result = 'SUCCESS'
+        <if test="projectIds != null and projectIds.size() > 0">
+            AND tp.project_id IN
+            <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                #{pid}
+            </foreach>
+        </if>
+        <if test="executeUser != null and executeUser != ''">
+            AND tpf.execute_user = #{executeUser}
+        </if>
+    </select>
+</mapper>

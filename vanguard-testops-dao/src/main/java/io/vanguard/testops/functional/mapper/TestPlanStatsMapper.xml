@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.TestPlanStatsMapper">
+
+    <select id="countDistinctGroupIdExcludingNone" resultType="long">
+        SELECT COUNT(DISTINCT group_id)
+        FROM spotter_aegis.test_plan
+        WHERE (group_id IS NOT NULL AND group_id != 'NONE')
+        <if test="projectIds != null and projectIds.size() > 0">
+            AND project_id IN
+            <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                #{pid}
+            </foreach>
+        </if>
+        <if test="createUser != null and createUser != ''">
+            AND create_user = #{createUser}
+        </if>
+        <if test="createTimeStart != null">
+            AND create_time &gt;= #{createTimeStart}
+        </if>
+        <if test="createTimeEnd != null">
+            AND create_time &lt;= #{createTimeEnd}
+        </if>
+    </select>
+</mapper>

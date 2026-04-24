@@ -1,0 +1,31 @@
+FROM registry.fit2cloud.com/metersphere/alpine-openjdk21-jre
+
+LABEL maintainer="FIT2CLOUD <support@fit2cloud.com>"
+
+ARG MS_VERSION=dev
+ARG DEPENDENCY=start/target/dependency
+
+COPY ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY ${DEPENDENCY}/META-INF /app/META-INF
+COPY ${DEPENDENCY}/BOOT-INF/classes /app
+
+# 静态文件
+COPY start/src/main/resources/static /app/static
+
+
+# Deploy artifacts and shell scripts (from build context root)
+COPY deployment/ /deployments/
+COPY shells/ /shells/
+RUN mkdir -p /deployments /shells \
+    && find /deployments -type f -name '*.sh' -exec chmod a+x {} + 2>/dev/null || true \
+    && find /shells -type f -name '*.sh' -exec chmod a+x {} + 2>/dev/null || true
+
+ENV JAVA_CLASSPATH=/app:/opt/jmeter/lib/ext/*:/app/lib/*
+ENV JAVA_MAIN_CLASS=io.metersphere.Application
+ENV AB_OFF=true
+ENV MS_VERSION=${MS_VERSION}
+ENV JAVA_OPTIONS="-Dfile.encoding=utf-8 -Djava.awt.headless=true --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED"
+
+RUN echo -n "${MS_VERSION}" > /tmp/MS_VERSION
+
+CMD ["/deployments/run-java.sh"]

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.MeegoStoryStatsMapper">
+  
+  <!-- 结果集映射 -->
+  <resultMap id="BaseResultMap" type="io.vanguard.testops.functional.domain.MeegoStoryStats">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="story_id" jdbcType="VARCHAR" property="storyId" />
+    <result column="story_name" jdbcType="VARCHAR" property="storyName" />
+    <result column="defect_count" jdbcType="INTEGER" property="defectCount" />
+    <!-- 新增字段映射: 测分编写预期时间 -->
+    <result column="test_analysis_time" jdbcType="DECIMAL" property="testAnalysisTime" />
+    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" />
+  </resultMap>
+
+  <!-- 通用查询字段 -->
+  <sql id="Base_Column_List">
+    id, story_id, story_name, defect_count, test_analysis_time, updated_at
+  </sql>
+
+  <!-- 根据主键查询 (指定库名 spotter_efficiency) -->
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.meego_story_stats
+    where id = #{id,jdbcType=BIGINT}
+  </select>
+
+  <!-- 根据需求ID查询 (指定库名 spotter_efficiency) -->
+  <select id="selectByStoryId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.meego_story_stats
+    where story_id = #{storyId,jdbcType=VARCHAR}
+  </select>
+
+  <!-- 模糊搜索 (指定库名 spotter_efficiency) -->
+  <select id="selectByStoryNameLike" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.meego_story_stats
+    where story_name like concat('%', #{keyword}, '%')
+       or story_id like concat('%', #{keyword}, '%')
+    order by updated_at desc
+    limit 20
+  </select>
+
+  <!-- 查询列表 (指定库名 spotter_efficiency) -->
+  <select id="selectAll" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.meego_story_stats
+    order by id desc
+  </select>
+
+  <!-- 【优化】动态插入：只有字段不为null时才插入 (指定库名 spotter_efficiency) -->
+  <insert id="insert" parameterType="io.vanguard.testops.functional.domain.MeegoStoryStats" useGeneratedKeys="true" keyProperty="id">
+    insert into spotter_efficiency.meego_story_stats
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="storyId != null">story_id,</if>
+      <if test="storyName != null">story_name,</if>
+      <if test="defectCount != null">defect_count,</if>
+      <if test="testAnalysisTime != null">test_analysis_time,</if>
+      <if test="updatedAt != null">updated_at,</if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="storyId != null">#{storyId,jdbcType=VARCHAR},</if>
+      <if test="storyName != null">#{storyName,jdbcType=VARCHAR},</if>
+      <if test="defectCount != null">#{defectCount,jdbcType=INTEGER},</if>
+      <if test="testAnalysisTime != null">#{testAnalysisTime,jdbcType=DECIMAL},</if>
+      <if test="updatedAt != null">#{updatedAt,jdbcType=TIMESTAMP},</if>
+    </trim>
+  </insert>
+
+  <!-- 【优化】动态更新：只更新不为null的字段 (指定库名 spotter_efficiency) -->
+  <update id="updateByPrimaryKey" parameterType="io.vanguard.testops.functional.domain.MeegoStoryStats">
+    update spotter_efficiency.meego_story_stats
+    <set>
+      <if test="storyId != null">
+        story_id = #{storyId,jdbcType=VARCHAR},
+      </if>
+      <if test="storyName != null">
+        story_name = #{storyName,jdbcType=VARCHAR},
+      </if>
+      <if test="defectCount != null">
+        defect_count = #{defectCount,jdbcType=INTEGER},
+      </if>
+      <if test="testAnalysisTime != null">
+        test_analysis_time = #{testAnalysisTime,jdbcType=DECIMAL},
+      </if>
+      <if test="updatedAt != null">
+        updated_at = #{updatedAt,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where id = #{id,jdbcType=BIGINT}
+  </update>
+
+</mapper>

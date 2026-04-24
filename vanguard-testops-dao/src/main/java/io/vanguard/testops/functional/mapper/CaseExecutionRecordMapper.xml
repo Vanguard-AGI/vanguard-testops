@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.CaseExecutionRecordMapper">
+
+    <resultMap id="BaseResultMap" type="io.vanguard.testops.functional.domain.CaseExecutionRecord">
+        <id property="id" column="id" jdbcType="VARCHAR"/>
+        <result property="caseId" column="case_id" jdbcType="VARCHAR"/>
+        <result property="projectId" column="project_id" jdbcType="VARCHAR"/>
+        <result property="planId" column="plan_id" jdbcType="VARCHAR"/>
+        <result property="executorId" column="executor_id" jdbcType="VARCHAR"/>
+        <result property="status" column="exec_result" jdbcType="VARCHAR"/>
+        <result property="duration" column="exec_duration" jdbcType="BIGINT"/>
+        <result property="startTime" column="exec_start_time" jdbcType="BIGINT"/>
+        <result property="endTime" column="exec_end_time" jdbcType="BIGINT"/>
+        <result property="isFirstExecution" column="is_first_exec" jdbcType="TINYINT"/>
+        <result property="caseCsScore" column="case_cs_score" jdbcType="DECIMAL"/>
+        <result property="createTime" column="create_time" jdbcType="BIGINT"/>
+        <result property="updateTime" column="update_time" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <resultMap id="AggregateResultMap" type="io.vanguard.testops.functional.domain.CaseExecutionRecordAggregate">
+        <result property="execCount" column="exec_count" jdbcType="BIGINT"/>
+        <result property="totalDuration" column="total_duration" jdbcType="BIGINT"/>
+        <result property="passCount" column="pass_count" jdbcType="BIGINT"/>
+        <result property="firstExecCount" column="first_exec_count" jdbcType="BIGINT"/>
+        <result property="firstPassCount" column="first_pass_count" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,case_id,project_id,plan_id,executor_id,exec_result,exec_duration,exec_start_time,exec_end_time,is_first_exec,case_cs_score,create_time,update_time
+    </sql>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_execution_record
+        where id = #{id,jdbcType=VARCHAR}
+    </select>
+
+    <select id="selectByCaseId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_execution_record
+        where case_id = #{caseId,jdbcType=VARCHAR}
+        order by create_time desc
+    </select>
+
+    <select id="selectByCaseIdAndTimeRange" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_execution_record
+        where case_id = #{caseId,jdbcType=VARCHAR}
+        <if test="startTime != null">
+            and exec_start_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and exec_end_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        order by create_time desc
+    </select>
+
+    <select id="selectByProjectId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_execution_record
+        where project_id = #{projectId,jdbcType=VARCHAR}
+        <if test="startTime != null">
+            and exec_start_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and exec_end_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        order by create_time desc
+    </select>
+
+    <select id="selectByPlanId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from spotter_efficiency.case_execution_record
+        where plan_id = #{planId,jdbcType=VARCHAR}
+        order by create_time desc
+    </select>
+
+    <select id="selectExecutionSummaryByProject" resultMap="AggregateResultMap">
+        select
+        coalesce(sum(exec_count), 0) as exec_count,
+        coalesce(sum(total_time_ms), 0) as total_duration,
+        coalesce(sum(case when last_exec_result = 'PASS' then exec_count else 0 end), 0) as pass_count,
+        coalesce(sum(case when first_exec_result is not null then 1 else 0 end), 0) as first_exec_count,
+        coalesce(sum(case when first_exec_result = 'PASS' then 1 else 0 end), 0) as first_pass_count
+        from spotter_efficiency.test_plan_case_metrics
+        where project_id = #{projectId,jdbcType=VARCHAR}
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <select id="selectExecutionSummaryByCaseIds" resultMap="AggregateResultMap">
+        select
+        coalesce(sum(exec_count), 0) as exec_count,
+        coalesce(sum(total_time_ms), 0) as total_duration,
+        coalesce(sum(case when last_exec_result = 'PASS' then exec_count else 0 end), 0) as pass_count,
+        coalesce(sum(case when first_exec_result is not null then 1 else 0 end), 0) as first_exec_count,
+        coalesce(sum(case when first_exec_result = 'PASS' then 1 else 0 end), 0) as first_pass_count
+        from spotter_efficiency.test_plan_case_metrics
+        where case_id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <select id="selectExecutionCountsByProject" resultType="map">
+        select
+        case_id,
+        sum(exec_count) as exec_count
+        from spotter_efficiency.test_plan_case_metrics
+        where project_id = #{projectId,jdbcType=VARCHAR}
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        group by case_id
+    </select>
+
+    <select id="selectExecutionCountsByCaseIds" resultType="map">
+        select
+        case_id,
+        sum(exec_count) as exec_count
+        from spotter_efficiency.test_plan_case_metrics
+        where case_id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        group by case_id
+    </select>
+
+    <select id="countByCaseId" resultType="java.lang.Integer">
+        select count(*)
+        from spotter_efficiency.test_plan_case_metrics
+        where case_id = #{caseId,jdbcType=VARCHAR}
+    </select>
+
+    <select id="countByProjectIdAndTimeRange" resultType="java.lang.Integer">
+        select count(distinct case_id)
+        from spotter_efficiency.test_plan_case_metrics
+        where project_id = #{projectId,jdbcType=VARCHAR}
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.String">
+        delete from spotter_efficiency.case_execution_record
+        where id = #{id,jdbcType=VARCHAR}
+    </delete>
+
+    <insert id="insert" keyColumn="id" keyProperty="id" parameterType="io.vanguard.testops.functional.domain.CaseExecutionRecord" useGeneratedKeys="true">
+        insert into spotter_efficiency.case_execution_record
+        ( id,case_id,project_id,plan_id,executor_id
+        ,exec_result,exec_duration,exec_start_time,exec_end_time,is_first_exec,case_cs_score,create_time,update_time)
+        values (#{id,jdbcType=VARCHAR}, #{caseId,jdbcType=VARCHAR}, #{projectId,jdbcType=VARCHAR}, 
+        #{planId,jdbcType=VARCHAR}, #{executorId,jdbcType=VARCHAR}, #{status,jdbcType=VARCHAR}, 
+        #{duration,jdbcType=BIGINT}, #{startTime,jdbcType=BIGINT}, #{endTime,jdbcType=BIGINT}, 
+        #{isFirstExecution,jdbcType=TINYINT}, #{caseCsScore,jdbcType=DECIMAL}, 
+        #{createTime,jdbcType=BIGINT}, #{updateTime,jdbcType=BIGINT})
+    </insert>
+
+    <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="io.vanguard.testops.functional.domain.CaseExecutionRecord" useGeneratedKeys="true">
+        insert into spotter_efficiency.case_execution_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+                <if test="id != null">id,</if>
+                <if test="caseId != null">case_id,</if>
+                <if test="projectId != null">project_id,</if>
+                <if test="planId != null">plan_id,</if>
+                <if test="executorId != null">executor_id,</if>
+                <if test="status != null">exec_result,</if>
+                <if test="duration != null">exec_duration,</if>
+                <if test="startTime != null">exec_start_time,</if>
+                <if test="endTime != null">exec_end_time,</if>
+                <if test="isFirstExecution != null">is_first_exec,</if>
+                <if test="caseCsScore != null">case_cs_score,</if>
+                <if test="createTime != null">create_time,</if>
+                <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+                <if test="id != null">#{id,jdbcType=VARCHAR},</if>
+                <if test="caseId != null">#{caseId,jdbcType=VARCHAR},</if>
+                <if test="projectId != null">#{projectId,jdbcType=VARCHAR},</if>
+                <if test="planId != null">#{planId,jdbcType=VARCHAR},</if>
+                <if test="executorId != null">#{executorId,jdbcType=VARCHAR},</if>
+                <if test="status != null">#{status,jdbcType=VARCHAR},</if>
+                <if test="duration != null">#{duration,jdbcType=BIGINT},</if>
+                <if test="startTime != null">#{startTime,jdbcType=BIGINT},</if>
+                <if test="endTime != null">#{endTime,jdbcType=BIGINT},</if>
+                <if test="isFirstExecution != null">#{isFirstExecution,jdbcType=TINYINT},</if>
+                <if test="caseCsScore != null">#{caseCsScore,jdbcType=DECIMAL},</if>
+                <if test="createTime != null">#{createTime,jdbcType=BIGINT},</if>
+                <if test="updateTime != null">#{updateTime,jdbcType=BIGINT},</if>
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="io.vanguard.testops.functional.domain.CaseExecutionRecord">
+        update spotter_efficiency.case_execution_record
+        <set>
+                <if test="caseId != null">case_id = #{caseId,jdbcType=VARCHAR},</if>
+                <if test="projectId != null">project_id = #{projectId,jdbcType=VARCHAR},</if>
+                <if test="planId != null">plan_id = #{planId,jdbcType=VARCHAR},</if>
+                <if test="executorId != null">executor_id = #{executorId,jdbcType=VARCHAR},</if>
+                <if test="status != null">exec_result = #{status,jdbcType=VARCHAR},</if>
+                <if test="duration != null">exec_duration = #{duration,jdbcType=BIGINT},</if>
+                <if test="startTime != null">exec_start_time = #{startTime,jdbcType=BIGINT},</if>
+                <if test="endTime != null">exec_end_time = #{endTime,jdbcType=BIGINT},</if>
+                <if test="isFirstExecution != null">is_first_exec = #{isFirstExecution,jdbcType=TINYINT},</if>
+                <if test="caseCsScore != null">case_cs_score = #{caseCsScore,jdbcType=DECIMAL},</if>
+                <if test="updateTime != null">update_time = #{updateTime,jdbcType=BIGINT},</if>
+        </set>
+        where id = #{id,jdbcType=VARCHAR}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="io.vanguard.testops.functional.domain.CaseExecutionRecord">
+        update spotter_efficiency.case_execution_record
+        set case_id = #{caseId,jdbcType=VARCHAR},
+            project_id = #{projectId,jdbcType=VARCHAR},
+            plan_id = #{planId,jdbcType=VARCHAR},
+            executor_id = #{executorId,jdbcType=VARCHAR},
+            exec_result = #{status,jdbcType=VARCHAR},
+            exec_duration = #{duration,jdbcType=BIGINT},
+            exec_start_time = #{startTime,jdbcType=BIGINT},
+            exec_end_time = #{endTime,jdbcType=BIGINT},
+            is_first_exec = #{isFirstExecution,jdbcType=TINYINT},
+            case_cs_score = #{caseCsScore,jdbcType=DECIMAL},
+            update_time = #{updateTime,jdbcType=BIGINT}
+        where id = #{id,jdbcType=VARCHAR}
+    </update>
+
+    <insert id="batchInsert">
+        insert into spotter_efficiency.case_execution_record
+        (id,case_id,project_id,plan_id,executor_id,exec_result,exec_duration,exec_start_time,exec_end_time,is_first_exec,case_cs_score,create_time,update_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id,jdbcType=VARCHAR}, #{item.caseId,jdbcType=VARCHAR}, #{item.projectId,jdbcType=VARCHAR}, 
+            #{item.planId,jdbcType=VARCHAR}, #{item.executorId,jdbcType=VARCHAR}, #{item.status,jdbcType=VARCHAR}, 
+            #{item.duration,jdbcType=BIGINT}, #{item.startTime,jdbcType=BIGINT}, #{item.endTime,jdbcType=BIGINT}, 
+            #{item.isFirstExecution,jdbcType=TINYINT}, #{item.caseCsScore,jdbcType=DECIMAL}, 
+            #{item.createTime,jdbcType=BIGINT}, #{item.updateTime,jdbcType=BIGINT})
+        </foreach>
+    </insert>
+
+</mapper>

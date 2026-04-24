@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.CaseChangeLogMapper">
+  <resultMap id="BaseResultMap" type="io.vanguard.testops.functional.domain.CaseChangeLog">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="case_id" jdbcType="VARCHAR" property="caseId" />
+    <result column="project_id" jdbcType="VARCHAR" property="projectId" />
+    <result column="change_reason" jdbcType="VARCHAR" property="changeReason" />
+    <result column="change_area" jdbcType="VARCHAR" property="changeArea" />
+    <result column="operator" jdbcType="VARCHAR" property="operator" />
+    <result column="create_time" jdbcType="BIGINT" property="createTime" />
+  </resultMap>
+
+  <sql id="Base_Column_List">
+    id, case_id, project_id, change_reason, change_area, operator, create_time
+  </sql>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.case_change_log
+    where id = #{id,jdbcType=BIGINT}
+  </select>
+
+  <select id="selectByCaseId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.case_change_log
+    where case_id = #{caseId,jdbcType=VARCHAR}
+  </select>
+
+  <insert id="insert" parameterType="io.vanguard.testops.functional.domain.CaseChangeLog">
+    insert into spotter_efficiency.case_change_log (case_id, project_id, change_reason, 
+      change_area, operator, create_time
+      )
+    values (#{caseId,jdbcType=VARCHAR}, #{projectId,jdbcType=VARCHAR}, #{changeReason,jdbcType=VARCHAR}, 
+      #{changeArea,jdbcType=VARCHAR}, #{operator,jdbcType=VARCHAR}, #{createTime,jdbcType=BIGINT}
+      )
+  </insert>
+</mapper>

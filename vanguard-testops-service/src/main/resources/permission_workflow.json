@@ -1,0 +1,25 @@
+[
+  {
+    "id": "WORKFLOW",
+    "name": "permission.workflow.name",
+    "type": "PROJECT",
+    "children": [
+      {
+        "id": "PROJECT_WORKFLOW_TEST_REPORT",
+        "name": "permission.workflow_test_report.name",
+        "permissions": [
+          {
+            "id": "PROJECT_WORKFLOW_TEST_REPORT:READ"
+          },
+          {
+            "id": "PROJECT_WORKFLOW_TEST_REPORT:READ+UPDATE"
+          },
+          {
+            "id": "PROJECT_WORKFLOW_TEST_REPORT:READ+DELETE"
+          }
+        ]
+      }
+    ],
+    "order": 10
+  }
+]

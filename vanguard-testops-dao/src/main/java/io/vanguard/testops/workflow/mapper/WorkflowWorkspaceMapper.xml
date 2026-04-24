@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowWorkspaceMapper">
+
+    <resultMap id="WorkflowWorkspaceResultMap" type="io.vanguard.testops.workflow.domain.WorkflowWorkspace">
+        <id column="workspace_id" property="workspaceId"/>
+        <result column="workspace_name" property="workspaceName"/>
+        <result column="project_id" property="projectId"/>
+        <result column="owner" property="owner"/>
+        <result column="global_vars" property="globalVars" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="visibility" property="visibility"/>
+        <result column="description" property="description"/>
+        <result column="icon" property="icon"/>
+        <result column="icon_color" property="iconColor"/>
+        <result column="create_time" property="createTime"/>
+        <result column="create_user" property="createUser"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="update_user" property="updateUser"/>
+        <result column="deleted_by" property="deletedBy"/>
+        <result column="deleted_time" property="deletedTime"/>
+    </resultMap>
+
+    <!-- 根据项目ID查询工作空间列表（支持关键词过滤） -->
+    <select id="selectByProjectId" resultMap="WorkflowWorkspaceResultMap">
+        SELECT * FROM workflow_workspace 
+        WHERE project_id = #{projectId} AND deleted_time IS NULL 
+        <if test="keyword != null and keyword != ''">
+            AND (workspace_name LIKE CONCAT('%', #{keyword}, '%') 
+                 OR description LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据工作空间ID查询（包含软删除的数据） -->
+    <select id="selectByWorkspaceId" resultMap="WorkflowWorkspaceResultMap">
+        SELECT * FROM workflow_workspace 
+        WHERE workspace_id = #{workspaceId}
+    </select>
+
+</mapper>
+

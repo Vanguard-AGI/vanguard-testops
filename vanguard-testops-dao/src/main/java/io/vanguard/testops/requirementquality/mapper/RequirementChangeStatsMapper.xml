@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.requirementquality.mapper.RequirementChangeStatsMapper">
+
+    <resultMap id="BaseResultMap" type="io.vanguard.testops.requirementquality.domain.RequirementChangeStats">
+        <id column="id" property="id"/>
+        <result column="story_id" property="storyId"/>
+        <result column="project_id" property="projectId"/>
+        <result column="repo_name" property="repoName"/>
+        <result column="service_name" property="serviceName"/>
+        <result column="other_info" property="otherInfo"/>
+        <result column="endpoint_type" property="endpointType"/>
+        <result column="pipeline_id" property="pipelineId"/>
+        <result column="pipeline_name" property="pipelineName"/>
+        <result column="pipeline_url" property="pipelineUrl"/>
+        <result column="env" property="env"/>
+        <result column="deploy_time" property="deployTime"/>
+        <result column="loc_add" property="locAdd"/>
+        <result column="loc_delete" property="locDelete"/>
+        <result column="loc_modify" property="locModify"/>
+        <result column="loc_valid" property="locValid"/>
+        <result column="deploy_result" property="deployResult"/>
+        <result column="is_rollback" property="isRollback"/>
+        <result column="is_hotfix" property="isHotfix"/>
+        <result column="deployer" property="deployer"/>
+        <result column="frontend" property="frontend"/>
+        <result column="backend" property="backend"/>
+        <result column="remark" property="remark"/>
+        <result column="details" property="details"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, story_id, project_id, repo_name, service_name, other_info, endpoint_type, pipeline_id, pipeline_name, pipeline_url, env,
+        deploy_time, loc_add, loc_delete, loc_modify, loc_valid, deploy_result,
+        is_rollback, is_hotfix, deployer, frontend, backend, remark, details, created_at
+    </sql>
+
+    <sql id="List_Where">
+        <where>
+            <if test="request.storyId != null and request.storyId != ''">
+                AND story_id = #{request.storyId}
+            </if>
+            <if test="request.projectId != null and request.projectId != ''">
+                AND project_id = #{request.projectId}
+            </if>
+            <if test="request.repoName != null and request.repoName != ''">
+                AND repo_name LIKE CONCAT('%', #{request.repoName}, '%')
+            </if>
+            <if test="request.deployResult != null and request.deployResult != ''">
+                AND deploy_result = #{request.deployResult}
+            </if>
+            <if test="request.deployTimeStart != null">
+                AND deploy_time &gt;= #{request.deployTimeStart}
+            </if>
+            <if test="request.deployTimeEnd != null">
+                AND deploy_time &lt;= #{request.deployTimeEnd}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM spotter_efficiency.requirement_change_stats
+        WHERE id = #{id,jdbcType=VARCHAR}
+    </select>
+
+    <select id="selectListPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM spotter_efficiency.requirement_change_stats
+        <include refid="List_Where"/>
+        ORDER BY deploy_time DESC, created_at DESC
+        LIMIT #{request.pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(1)
+        FROM spotter_efficiency.requirement_change_stats
+        <include refid="List_Where"/>
+    </select>
+
+    <insert id="insert">
+        INSERT INTO spotter_efficiency.requirement_change_stats (
+            id, story_id, project_id, repo_name, service_name, other_info, endpoint_type, pipeline_id, pipeline_name, pipeline_url, env,
+            deploy_time, loc_add, loc_delete, loc_modify, loc_valid, deploy_result,
+            is_rollback, is_hotfix, deployer, frontend, backend, remark, details, created_at
+        ) VALUES (
+            #{row.id},
+            #{row.storyId},
+            #{row.projectId},
+            #{row.repoName},
+            #{row.serviceName},
+            #{row.otherInfo},
+            #{row.endpointType},
+            #{row.pipelineId},
+            #{row.pipelineName},
+            #{row.pipelineUrl},
+            #{row.env},
+            #{row.deployTime},
+            #{row.locAdd},
+            #{row.locDelete},
+            #{row.locModify},
+            #{row.locValid},
+            #{row.deployResult},
+            #{row.isRollback},
+            #{row.isHotfix},
+            #{row.deployer},
+            #{row.frontend},
+            #{row.backend},
+            #{row.remark},
+            #{row.details},
+            #{row.createdAt}
+        )
+    </insert>
+
+    <update id="updateById">
+        UPDATE spotter_efficiency.requirement_change_stats
+        <set>
+            <if test="row.storyId != null">story_id = #{row.storyId},</if>
+            <if test="row.projectId != null">project_id = #{row.projectId},</if>
+            <if test="row.env != null">env = #{row.env},</if>
+            <if test="row.pipelineUrl != null">pipeline_url = #{row.pipelineUrl},</if>
+            <if test="row.deployResult != null">deploy_result = #{row.deployResult},</if>
+            <if test="row.isRollback != null">is_rollback = #{row.isRollback},</if>
+            <if test="row.isHotfix != null">is_hotfix = #{row.isHotfix},</if>
+            <if test="row.remark != null">remark = #{row.remark},</if>
+            <if test="row.frontend != null">frontend = #{row.frontend},</if>
+            <if test="row.backend != null">backend = #{row.backend},</if>
+        </set>
+        WHERE id = #{row.id}
+    </update>
+</mapper>

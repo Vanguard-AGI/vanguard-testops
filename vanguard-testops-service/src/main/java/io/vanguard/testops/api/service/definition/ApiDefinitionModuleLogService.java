@@ -1,0 +1,171 @@
+package io.vanguard.testops.api.service.definition;
+
+import io.vanguard.testops.api.domain.ApiDefinition;
+import io.vanguard.testops.api.domain.ApiDefinitionModule;
+import io.vanguard.testops.api.domain.ApiTestCase;
+import io.vanguard.testops.project.domain.Project;
+import io.vanguard.testops.project.dto.NodeSortDTO;
+import io.vanguard.testops.project.mapper.ProjectMapper;
+import io.vanguard.testops.sdk.constants.HttpMethodConstants;
+import io.vanguard.testops.sdk.util.JSON;
+import io.vanguard.testops.sdk.util.Translator;
+import io.vanguard.testops.system.dto.builder.LogDTOBuilder;
+import io.vanguard.testops.system.dto.sdk.BaseModule;
+import io.vanguard.testops.system.dto.sdk.BaseTreeNode;
+import io.vanguard.testops.system.log.constants.OperationLogModule;
+import io.vanguard.testops.system.log.constants.OperationLogType;
+import io.vanguard.testops.system.log.dto.LogDTO;
+import io.vanguard.testops.system.log.service.OperationLogService;
+import jakarta.annotation.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@Transactional(rollbackFor = Exception.class)
+public class ApiDefinitionModuleLogService {
+    private static final String API_DEBUG_MODULE = "/api/definition/module";
+    private static final String ADD = API_DEBUG_MODULE + "/add";
+    private static final String UPDATE = API_DEBUG_MODULE + "/update";
+    private static final String DELETE = API_DEBUG_MODULE + "/delete";
+    private static final String MOVE = API_DEBUG_MODULE + "/move";
+    private static final String MOVE_TO = "file.log.move_to";
+
+    @Resource
+    private ProjectMapper projectMapper;
+    @Resource
+    private OperationLogService operationLogService;
+
+    public void saveAddLog(ApiDefinitionModule module, String operator) {
+        Project project = projectMapper.selectByPrimaryKey(module.getProjectId());
+        LogDTO dto = LogDTOBuilder.builder()
+                .projectId(module.getProjectId())
+                .organizationId(project.getOrganizationId())
+                .type(OperationLogType.ADD.name())
+                .module(OperationLogModule.API_TEST_MANAGEMENT_MODULE)
+                .method(HttpMethodConstants.POST.name())
+                .path(ADD)
+                .sourceId(module.getId())
+                .content(module.getName())
+                .originalValue(JSON.toJSONBytes(module))
+                .createUser(operator)
+                .build().getLogDTO();
+        operationLogService.add(dto);
+    }
+
+    public void saveUpdateLog(ApiDefinitionModule module, String operator) {
+        Project project = projectMapper.selectByPrimaryKey(module.getProjectId());
+        LogDTO dto = LogDTOBuilder.builder()
+                .projectId(project.getId())
+                .organizationId(project.getOrganizationId())
+                .type(OperationLogType.UPDATE.name())
+                .module(OperationLogModule.API_TEST_MANAGEMENT_MODULE)
+                .method(HttpMethodConstants.POST.name())
+                .path(UPDATE)
+                .sourceId(module.getId())
+                .content(module.getName())
+                .originalValue(JSON.toJSONBytes(module))
+                .createUser(operator)
+                .build().getLogDTO();
+
+        operationLogService.add(dto);
+    }
+
+    public void saveDeleteModuleLog(List<BaseTreeNode> deleteModule, String operator, String projectId) {
+        List<LogDTO> dtoList = new ArrayList<>();
+        Project project = projectMapper.selectByPrimaryKey(projectId);
+        deleteModule.forEach(item -> {
+            LogDTO dto = LogDTOBuilder.builder()
+                    .projectId(project.getId())
+                    .organizationId(project.getOrganizationId())
+                    .type(OperationLogType.DELETE.name())
+                    .module(OperationLogModule.API_TEST_MANAGEMENT_MODULE)
+                    .method(HttpMethodConstants.GET.name())
+                    .path(DELETE + "/%s")
+                    .sourceId(item.getId())
+                    .content(item.getName() + " " + Translator.get("log.delete_module"))
+                    .createUser(operator)
+                    .build().getLogDTO();
+            dtoList.add(dto);
+        });
+        operationLogService.batchAdd(dtoList);
+    }
+
+    public void saveDeleteDataLog(List<ApiDefinition> deleteData, String operator, String projectId) {
+        Project project = projectMapper.selectByPrimaryKey(projectId);
+        List<LogDTO> logs = new ArrayList<>();
+        deleteData.forEach(item -> {
+                    LogDTO dto = LogDTOBuilder.builder()
+                            .projectId(project.getId())
+                            .organizationId(project.getOrganizationId())
+                            .type(OperationLogType.DELETE.name())
+                            .module(OperationLogModule.API_TEST_MANAGEMENT_MODULE)
+                            .method(HttpMethodConstants.GET.name())
+                            .path(DELETE + "/%s")
+                            .sourceId(item.getId())
+                            .content(item.getName())
+                            .createUser(operator)
+                            .build().getLogDTO();
+                    logs.add(dto);
+                }
+        );
+        operationLogService.batchAdd(logs);
+    }
+
+    public void saveDeleteCaseLog(List<ApiTestCase> apiTestCases, String operator, String projectId) {
+        Project project = projectMapper.selectByPrimaryKey(projectId);
+        List<LogDTO> logs = new ArrayList<>();
+        apiTestCases.forEach(item -> {
+                    LogDTO dto = LogDTOBuilder.builder()
+                            .projectId(project.getId())
+                            .organizationId(project.getOrganizationId())
+                            .type(OperationLogType.DELETE.name())
+                            .module(OperationLogModule.API_TEST_MANAGEMENT_MODULE)
+                            .method(HttpMethodConstants.GET.name())
+                            .path(DELETE + "/%s")
+                            .sourceId(item.getId())
+                            .content(item.getName())
+                            .createUser(operator)
+                            .build().getLogDTO();
+                    logs.add(dto);
+                }
+        );
+        operationLogService.batchAdd(logs);
+    }
+
+    public void saveMoveLog(@Validated NodeSortDTO request, String operator) {
+        BaseModule moveNode = request.getNode();
+        BaseModule previousNode = request.getPreviousNode();
+        BaseModule nextNode = request.getNextNode();
+        BaseModule parentModule = request.getParent();
+
+        Project project = projectMapper.selectByPrimaryKey(moveNode.getProjectId());
+        String logContent;
+        if (nextNode == null && previousNode == null) {
+            logContent = moveNode.getName() + " " + Translator.get(MOVE_TO) + parentModule.getName();
+        } else if (nextNode == null) {
+            logContent = moveNode.getName() + " " + Translator.get(MOVE_TO) + parentModule.getName() + " " + previousNode.getName() + Translator.get("file.log.next");
+        } else if (previousNode == null) {
+            logContent = moveNode.getName() + " " + Translator.get(MOVE_TO) + parentModule.getName() + " " + nextNode.getName() + Translator.get("file.log.previous");
+        } else {
+            logContent = moveNode.getName() + " " + Translator.get(MOVE_TO) + parentModule.getName() + " " +
+                    previousNode.getName() + Translator.get("file.log.next") + " " + nextNode.getName() + Translator.get("file.log.previous");
+        }
+        LogDTO dto = LogDTOBuilder.builder()
+                .projectId(moveNode.getProjectId())
+                .organizationId(project.getOrganizationId())
+                .type(OperationLogType.UPDATE.name())
+                .module(OperationLogModule.API_TEST_MANAGEMENT_MODULE)
+                .method(HttpMethodConstants.POST.name())
+                .path(MOVE)
+                .sourceId(moveNode.getId())
+                .content(logContent)
+                .originalValue(JSON.toJSONBytes(moveNode))
+                .createUser(operator)
+                .build().getLogDTO();
+        operationLogService.add(dto);
+    }
+}

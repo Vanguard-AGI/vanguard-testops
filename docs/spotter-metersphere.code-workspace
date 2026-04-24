@@ -1,0 +1,30 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../../PycharmProjects/aegis-one-web"
+		},
+		{
+			"path": "../../../PycharmProjects/spotter-runner"
+		},
+		{
+			"path": "../../../PycharmProjects/spotter-runner-web"
+		}
+	],
+	"settings": {
+		"git.autoRepositoryDetection": "openEditors",
+		"terminal.integrated.defaultProfile.windows": "Command Prompt",
+		"terminal.integrated.profiles.windows": {
+			"PowerShell (NoProfile)": {
+				"source": "PowerShell",
+				"args": [
+					"-NoLogo",
+					"-NoProfile"
+				]
+			}
+		},
+		"typescript.tsserver.maxTsServerMemory": 4096
+	}
+}

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowRunMapper">
+
+    <!-- 根据工作流ID查询运行记录列表（排除调试记录） -->
+    <select id="selectByWorkflowId" resultType="io.vanguard.testops.workflow.domain.WorkflowRun">
+        SELECT * FROM workflow_run 
+        WHERE workflow_id = #{workflowId} 
+          AND deleted_time IS NULL 
+          AND trigger_type != 'DEBUG'
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据工作流ID、项目ID和触发用户查询运行记录列表
+         查询逻辑：
+         - 当同时传入 projectId 和 triggerUser 时，排除 DEBUG 类型（用于查询执行历史）
+         - 当只传入 triggerUser 时，包含 DEBUG 类型（用于查询调试历史）
+         - 当不传入 triggerUser 时，排除 DEBUG 类型（用于查询执行历史） -->
+    <select id="selectByWorkflowIdAndFilters" resultType="io.vanguard.testops.workflow.domain.WorkflowRun">
+        SELECT * FROM workflow_run 
+        WHERE workflow_id = #{workflowId} 
+          AND deleted_time IS NULL 
+          <if test="triggerUser == null or triggerUser == ''">
+            <!-- 当不传入 triggerUser 时，排除 DEBUG 类型的记录（执行历史） -->
+            AND trigger_type != 'DEBUG'
+          </if>
+          <if test="triggerUser != null and triggerUser != '' and (projectId == null or projectId == '')">
+            <!-- 当只传入 triggerUser（不传入 projectId）时，包含所有类型（包括 DEBUG），用于查询调试历史 -->
+            AND trigger_user = #{triggerUser}
+          </if>
+          <if test="triggerUser != null and triggerUser != '' and projectId != null and projectId != ''">
+            <!-- 当同时传入 triggerUser 和 projectId 时，排除 DEBUG 类型（执行历史），并按用户和项目过滤 -->
+            AND trigger_type != 'DEBUG'
+            AND trigger_user = #{triggerUser}
+          </if>
+          <if test="projectId != null and projectId != ''">
+            AND project_id = #{projectId}
+          </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据项目ID查询运行记录列表（排除调试记录） -->
+    <select id="selectByProjectId" resultType="io.vanguard.testops.workflow.domain.WorkflowRun">
+        SELECT * FROM workflow_run 
+        WHERE project_id = #{projectId} 
+          AND deleted_time IS NULL 
+          AND trigger_type != 'DEBUG'
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据运行ID查询（包含软删除的数据） -->
+    <select id="selectByRunId" resultType="io.vanguard.testops.workflow.domain.WorkflowRun">
+        SELECT * FROM workflow_run 
+        WHERE run_id = #{runId}
+    </select>
+
+    <!-- 根据工作流ID查询最新的一条运行记录（排除调试记录） -->
+    <select id="selectLatestByWorkflowId" resultType="io.vanguard.testops.workflow.domain.WorkflowRun">
+        SELECT * FROM workflow_run 
+        WHERE workflow_id = #{workflowId} 
+          AND deleted_time IS NULL 
+          AND trigger_type != 'DEBUG'
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 批量查询运行记录：根据工作流ID列表查询运行记录列表（排除调试记录） -->
+    <select id="selectByWorkflowIds" resultType="io.vanguard.testops.workflow.domain.WorkflowRun">
+        SELECT * FROM workflow_run 
+        WHERE deleted_time IS NULL 
+          AND trigger_type != 'DEBUG'
+          AND workflow_id IN
+        <foreach collection="workflowIds" item="workflowId" open="(" separator="," close=")">
+            #{workflowId}
+        </foreach>
+        ORDER BY workflow_id, create_time DESC
+    </select>
+
+</mapper>
+

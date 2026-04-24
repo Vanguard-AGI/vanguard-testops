@@ -1,0 +1,1318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.ExtCaseMetricsMapper">
+
+    <select id="countCasesByProject" resultType="java.lang.Long">
+        select count(*)
+        from functional_case
+        where deleted = 0
+        <if test="projectId != null and projectId != 'ALL' and projectId != 'all'">
+          and project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+    </select>
+
+    <select id="countCasesByProjectAndTimeRange" resultType="java.lang.Long">
+        select count(*)
+        from functional_case
+        where deleted = 0
+        <if test="projectId != null and projectId != 'ALL' and projectId != 'all'">
+          and project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+          and create_time &gt;= #{startTime,jdbcType=BIGINT}
+          and create_time &lt;= #{endTime,jdbcType=BIGINT}
+    </select>
+
+
+    <!-- 获取高频执行用例TOP（周期内执行次数排名靠前的用例） -->
+    <select id="getHighFrequencyCases" resultType="java.util.Map">
+        select 
+            tpcm.case_id,
+            fc.name as case_name,
+            sum(tpcm.exec_count) as exec_count,
+            sum(tpcm.total_time_ms) as total_duration,
+            COALESCE(cmd.cs_score, 0) as cs_score,
+            cmd.complexity_level,
+            max(tpcm.last_exec_result) as last_exec_result
+        from spotter_efficiency.test_plan_case_metrics tpcm
+        left join spotter_efficiency.case_metrics_detail cmd 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+        left join spotter_metersphere.functional_case fc 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+        where 1=1
+        <if test="projectId != null and projectId != 'ALL'">
+          and tpcm.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+          and tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+          and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        group by tpcm.case_id, fc.name, cmd.cs_score, cmd.complexity_level
+        having sum(tpcm.exec_count) &gt;= #{threshold,jdbcType=INTEGER}
+        order by exec_count desc
+        limit 20
+    </select>
+
+    <select id="countPlanCases" resultType="java.lang.Long">
+        select count(*)
+        from test_plan_functional_case
+        where test_plan_id = #{planId,jdbcType=VARCHAR}
+    </select>
+
+    <select id="countPlanPassedCases" resultType="java.lang.Long">
+        select count(*)
+        from test_plan_functional_case
+        where test_plan_id = #{planId,jdbcType=VARCHAR}
+          and last_exec_result = 'PASS'
+    </select>
+
+    <select id="countPlanFirstPassCases" resultType="java.lang.Long">
+        select count(*)
+        from spotter_efficiency.test_plan_case_metrics
+        where test_plan_id = #{planId,jdbcType=VARCHAR}
+          and first_exec_result is not null
+          and first_exec_result = 'PASS'
+    </select>
+
+    <select id="getCaseIdsByProject" resultType="java.lang.String">
+        select id
+        from functional_case
+        where project_id = #{projectId,jdbcType=VARCHAR}
+          and deleted = 0
+    </select>
+
+    <!-- 用户维度查询方法 -->
+    <select id="countCasesByUser" resultType="java.lang.Long">
+        select count(*)
+        from functional_case
+        where create_user = #{userId,jdbcType=VARCHAR}
+          and deleted = 0
+    </select>
+
+    <select id="countCasesByUserAndTimeRange" resultType="java.lang.Long">
+        select count(*)
+        from functional_case
+        where create_user = #{userId,jdbcType=VARCHAR}
+          and deleted = 0
+          and create_time &gt;= #{startTime,jdbcType=BIGINT}
+          and create_time &lt;= #{endTime,jdbcType=BIGINT}
+    </select>
+
+
+    <!-- 获取用户维度的高频执行用例TOP -->
+    <select id="getHighFrequencyCasesByUser" resultType="java.util.Map">
+        select 
+            tpcm.case_id,
+            fc.name as case_name,
+            sum(tpcm.exec_count) as exec_count,
+            sum(tpcm.total_time_ms) as total_duration,
+            COALESCE(cmd.cs_score, 0) as cs_score,
+            cmd.complexity_level
+        from spotter_efficiency.test_plan_case_metrics tpcm
+        left join spotter_efficiency.case_metrics_detail cmd 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+        left join spotter_metersphere.functional_case fc 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+        where fc.create_user = #{userId,jdbcType=VARCHAR}
+          and tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+          and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        group by tpcm.case_id, fc.name, cmd.cs_score, cmd.complexity_level
+        having sum(tpcm.exec_count) &gt;= #{threshold,jdbcType=INTEGER}
+        order by exec_count desc
+    </select>
+
+    <select id="getCaseIdsByUser" resultType="java.lang.String">
+        select distinct cmd.case_id
+        from spotter_efficiency.case_metrics_detail cmd
+        inner join functional_case fc on cmd.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+        where fc.create_user = #{userId,jdbcType=VARCHAR}
+          and fc.deleted = 0
+    </select>
+
+    <select id="getAllUserIds" resultType="java.lang.String">
+        select distinct create_user
+        from functional_case
+        where deleted = 0
+          and create_user is not null
+          and create_user != ''
+    </select>
+
+    <select id="getAllCaseIds" resultType="java.lang.String">
+        select id
+        from functional_case
+        where deleted = 0
+        order by create_time asc
+    </select>
+
+    <select id="getCaseIdsByProjectForBatch" resultType="java.lang.String">
+        select id
+        from functional_case
+        where project_id = #{projectId,jdbcType=VARCHAR}
+          and deleted = 0
+        order by create_time asc
+    </select>
+
+    <select id="getAllProjectIds" resultType="java.lang.String">
+        select distinct project_id
+        from functional_case
+        where deleted = 0
+          and project_id is not null
+    </select>
+
+    <select id="countCaseMetricsDetail" resultType="java.lang.Long">
+        select count(*)
+        from spotter_efficiency.case_metrics_detail
+    </select>
+
+    <!-- 从 case_change_log 表获取在指定时间范围内被修改的用例ID列表（用于用例变更热度）
+         排除 CASE_COPY；可选限定为「测试计划内修改」或「两库内修改」合并去重 -->
+    <select id="getModifiedCaseIdsFromChangeLog" resultType="java.lang.String">
+        select distinct ccl.case_id
+        from spotter_efficiency.case_change_log ccl
+        where 1=1
+        and (ccl.change_reason is null or ccl.change_reason != 'CASE_COPY')
+        and ccl.case_id is not null
+        <if test="projectIds != null and projectIds.size() > 0">
+            and ccl.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != 'ALL'">
+            and ccl.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null and userId != 'all'">
+            and ccl.operator = #{userId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and ccl.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and ccl.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="twoLibraryModuleNames != null and !twoLibraryModuleNames.isEmpty()">
+            and (
+                exists (select 1 from test_plan_functional_case tpf where tpf.functional_case_id COLLATE utf8mb4_general_ci = ccl.case_id COLLATE utf8mb4_general_ci)
+                or exists (
+                    select 1 from functional_case fc_2lib
+                    inner join functional_case_module fcm_2lib on fc_2lib.module_id = fcm_2lib.id
+                    where fc_2lib.id COLLATE utf8mb4_general_ci = ccl.case_id COLLATE utf8mb4_general_ci and fc_2lib.deleted = 0
+                      and fcm_2lib.name in
+                    <foreach collection="twoLibraryModuleNames" item="name" open="(" separator="," close=")">
+                        #{name,jdbcType=VARCHAR}
+                    </foreach>
+                )
+            )
+        </if>
+    </select>
+
+    <!-- 从 case_metrics_detail 表获取复用用例ID列表（根据 case_source_type 字段） -->
+    <select id="getReusedCaseIdsFromSourceType" resultType="java.lang.String">
+        select distinct cmd.case_id
+        from spotter_efficiency.case_metrics_detail cmd
+        <if test="userId != null and userId != 'all'">
+            inner join functional_case fc on cmd.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+        </if>
+        where 1=1
+        <if test="projectIds != null and projectIds.size() > 0">
+            and cmd.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != 'ALL'">
+            and cmd.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null and userId != 'all'">
+            and fc.create_user = #{userId,jdbcType=VARCHAR}
+        </if>
+        and cmd.case_source_type in ('REUSE', 'COPY')
+        <if test="startTime != null">
+            and cmd.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and cmd.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        and cmd.case_id is not null
+    </select>
+
+    <select id="getHighFrequencyCaseIds" resultType="java.lang.String">
+        select tpcm.case_id
+        from spotter_efficiency.test_plan_case_metrics tpcm
+        where tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+          and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+          <if test="projectId != null">
+            and tpcm.project_id = #{projectId,jdbcType=VARCHAR}
+          </if>
+        group by tpcm.case_id
+        having sum(tpcm.exec_count) &gt;= #{threshold,jdbcType=INTEGER}
+    </select>
+
+    <select id="getHighFrequencyCaseIdsByUser" resultType="java.lang.String">
+        select tpcm.case_id
+        from spotter_efficiency.test_plan_case_metrics tpcm
+        join spotter_metersphere.functional_case fc 
+            on fc.id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+        where tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+          and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+          and fc.create_user = #{userId,jdbcType=VARCHAR}
+        group by tpcm.case_id
+        having sum(tpcm.exec_count) &gt;= #{threshold,jdbcType=INTEGER}
+    </select>
+
+
+    <select id="filterCaseIdsByTimeRange" resultType="java.lang.String">
+        select cmd.case_id
+        from spotter_efficiency.case_metrics_detail cmd
+        where cmd.case_id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+        <if test="startTime != null">
+            and cmd.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and cmd.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+    
+    <!-- 按照functional_case表的create_time筛选用例ID -->
+    <select id="filterCaseIdsByFunctionalCaseCreateTime" resultType="java.lang.String">
+        select fc.id
+        from functional_case fc
+        where fc.id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+        and fc.deleted = 0
+        <if test="startTime != null">
+            and fc.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and fc.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+    
+    <!-- 直接从 case_metrics_detail 表按所有维度一次性筛选用例ID（优化：移除不必要的ORDER BY）
+         excludeVersionCaseModule=true 时排除「迭代版本管理」模块，用于新增率分母口径 -->
+    <select id="getCaseIdsByDimensionAndTime" resultType="java.lang.String">
+        select cmd.case_id
+        from spotter_efficiency.case_metrics_detail cmd
+        where 1=1
+        <if test="projectIds != null and projectIds.size() > 0">
+            and cmd.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != ''">
+            and cmd.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null">
+            and cmd.create_user = #{userId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and cmd.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and cmd.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="excludeVersionCaseModule == true and versionCaseModuleName != null and versionCaseModuleName != ''">
+            and not exists (
+                select 1 from functional_case fc_ev
+                inner join functional_case_module fcm_ev on fc_ev.module_id = fcm_ev.id
+                where fc_ev.id = cmd.case_id and fc_ev.deleted = 0
+                  and fcm_ev.name = #{versionCaseModuleName,jdbcType=VARCHAR}
+            )
+        </if>
+    </select>
+
+    <!-- 两库（用例模板库+回归用例库）下在 endTime 之前已存在的用例ID（期初口径：create_time < endTime） -->
+    <select id="getTwoLibraryCaseIdsBeforeTime" resultType="java.lang.String">
+        select fc.id
+        from functional_case fc
+        inner join functional_case_module fcm on fc.module_id = fcm.id
+        where fc.deleted = 0 and fcm.name in
+        <foreach collection="twoLibraryModuleNames" item="name" open="(" separator="," close=")">
+            #{name,jdbcType=VARCHAR}
+        </foreach>
+        <if test="endTime != null">
+            and fc.create_time &lt; #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="projectId != null and projectId != ''">
+            and fc.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+    </select>
+
+    <!-- 两库下在 endTime 及之前已存在的用例ID（周期内总用例：create_time &lt;= endTime） -->
+    <select id="getTwoLibraryCaseIdsUpToTime" resultType="java.lang.String">
+        select fc.id
+        from functional_case fc
+        inner join functional_case_module fcm on fc.module_id = fcm.id
+        where fc.deleted = 0 and fcm.name in
+        <foreach collection="twoLibraryModuleNames" item="name" open="(" separator="," close=")">
+            #{name,jdbcType=VARCHAR}
+        </foreach>
+        <if test="endTime != null">
+            and fc.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="projectIds != null and projectIds.size() > 0">
+            and fc.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != ''">
+            and fc.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+    </select>
+
+    <!-- 两库模块下当前存在的全部用例ID，不按时间筛选，用于指标分母（分母不受时间影响） -->
+    <select id="getTwoLibraryCaseIds" resultType="java.lang.String">
+        select fc.id
+        from functional_case fc
+        inner join functional_case_module fcm on fc.module_id = fcm.id
+        where fc.deleted = 0 and fcm.name in
+        <foreach collection="twoLibraryModuleNames" item="name" open="(" separator="," close=")">
+            #{name,jdbcType=VARCHAR}
+        </foreach>
+        <if test="projectIds != null and projectIds.size() > 0">
+            and fc.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != ''">
+            and fc.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+    </select>
+
+    <!-- 项目下全部用例ID（仅未删除：deleted IS NULL 或 deleted = 0），不按时间、不按模块，用于总用例数、用例变更率分母等 -->
+    <select id="getTotalCaseIdsByProject" resultType="java.lang.String">
+        select fc.id
+        from functional_case fc
+        where (fc.deleted IS NULL OR fc.deleted = 0)
+        <if test="projectIds != null and projectIds.size() > 0">
+            and fc.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != ''">
+            and fc.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+    </select>
+
+    <!-- 两库下在 [startTime, endTime] 内新建的用例ID（按 create_time，用于有效用例数） -->
+    <select id="getTwoLibraryNewCaseIdsInPeriod" resultType="java.lang.String">
+        select fc.id
+        from functional_case fc
+        inner join functional_case_module fcm on fc.module_id = fcm.id
+        where fc.deleted = 0 and fcm.name in
+        <foreach collection="twoLibraryModuleNames" item="name" open="(" separator="," close=")">
+            #{name,jdbcType=VARCHAR}
+        </foreach>
+        <if test="startTime != null">
+            and fc.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and fc.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="projectIds != null and projectIds.size() > 0">
+            and fc.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != ''">
+            and fc.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+    </select>
+
+    <!-- 用例库中 create_time 在 [startTime, endTime] 内的用例ID（用于最近2周新增等） -->
+    <select id="getNewCaseIdsInTimeRange" resultType="java.lang.String">
+        select id from functional_case
+        where deleted = 0
+        <if test="projectIds != null and projectIds.size() > 0">
+            and project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != ''">
+            and project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <!-- 两库+时间范围内无引用无执行的新增用例ID（用于用例维度新增率分子） -->
+    <select id="getTwoLibraryNewCaseIdsWithoutRefOrExec" resultType="java.lang.String">
+        select fc.id
+        from functional_case fc
+        inner join functional_case_module fcm on fc.module_id = fcm.id
+        where fc.deleted = 0
+        and fcm.name in
+        <foreach collection="twoLibraryModuleNames" item="name" open="(" separator="," close=")">
+            #{name,jdbcType=VARCHAR}
+        </foreach>
+        <if test="startTime != null">
+            and fc.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and fc.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="projectIds != null and projectIds.size() > 0">
+            and fc.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != ''">
+            and fc.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        and not exists (select 1 from test_plan_functional_case tpfc where tpfc.functional_case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci)
+        and not exists (select 1 from spotter_efficiency.test_plan_case_metrics tpcm where tpcm.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci and tpcm.exec_count > 0)
+    </select>
+    
+    <!-- 获取在指定时间范围内执行过的用例ID列表（从 test_plan_case_metrics 表） -->
+    <select id="getExecutedCaseIdsInTimeRange" resultType="java.lang.String">
+        select distinct tpcm.case_id
+        from spotter_efficiency.test_plan_case_metrics tpcm
+        where tpcm.case_id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+        and tpcm.exec_count > 0
+        <if test="startTime != null">
+            and tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+
+    <!-- 直接从 case_metrics_detail 表查询用例列表 -->
+    <select id="getCaseListByMetricDirect" resultType="io.vanguard.testops.functional.dto.CaseDetailWithCSDTO">
+        select distinct
+            fc.id as caseId,
+            fc.name as caseName,
+            fc.num as caseNum,
+            fc.module_id as moduleId,
+            fc.project_id as projectId,
+            fc.create_user as createUser,
+            fc.create_time as createTime,
+            fc.update_time as updateTime,
+            CONVERT(fcb.prerequisite USING utf8mb4) as prerequisite,
+            CONVERT(fcb.description USING utf8mb4) as description,
+            cmd.cs_score as csScore,
+            cmd.cs_factor_c1 as csFactorC1,
+            cmd.cs_factor_c2 as csFactorC2,
+            cmd.cs_factor_c3 as csFactorC3,
+            cmd.cs_factor_c4 as csFactorC4,
+            cmd.cs_factor_c5 as csFactorC5,
+            cmd.cs_factor_c6 as csFactorC6
+        from spotter_efficiency.case_metrics_detail cmd
+        inner join functional_case fc on cmd.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+        left join functional_case_blob fcb on fc.id = fcb.id
+        
+        <!-- 根据 metricType 动态添加 JOIN -->
+        <choose>
+            <!-- 复用类指标：从 case_metrics_detail 表的 case_source_type 字段判断（REUSE/COPY 表示复用） -->
+            <when test="metricType == 'reuseRateByCount' or metricType == 'reuseRateByWorkload' or metricType == 'absoluteTimeSavings' or metricType == 'timeSavingRate' or metricType == 'planCaseReuseRate'">
+                and cmd.case_source_type in ('REUSE', 'COPY')
+                <if test="startTime != null">
+                    and cmd.create_time &gt;= #{startTime,jdbcType=BIGINT}
+                </if>
+                <if test="endTime != null">
+                    and cmd.create_time &lt;= #{endTime,jdbcType=BIGINT}
+                </if>
+            </when>
+            <!-- 变更类指标：关联 case_change_log 表查询变更记录 -->
+            <when test="metricType == 'caseChangeHeat' or metricType == 'planCaseModifyRate'">
+                inner join spotter_efficiency.case_change_log ccl on fc.id = ccl.case_id
+                <if test="startTime != null">
+                    and ccl.create_time &gt;= #{startTime,jdbcType=BIGINT}
+                </if>
+                <if test="endTime != null">
+                    and ccl.create_time &lt;= #{endTime,jdbcType=BIGINT}
+                </if>
+            </when>
+            <!-- 高频/高价值指标：关联执行记录表 -->
+            <when test="metricType == 'highFreqCaseCount' or metricType == 'highValueExecRate'">
+                inner join (
+                    select case_id 
+                    from spotter_efficiency.test_plan_case_metrics
+                    where 1=1
+                    <if test="startTime != null">
+                        and create_time &gt;= #{startTime,jdbcType=BIGINT}
+                    </if>
+                    <if test="endTime != null">
+                        and create_time &lt;= #{endTime,jdbcType=BIGINT}
+                    </if>
+                    group by case_id
+                    having sum(exec_count) &gt;= 3 <!-- 硬编码阈值 3，与 Service 中一致 -->
+                ) cer_high on fc.id = cer_high.case_id
+            </when>
+        </choose>
+
+        where fc.deleted = 0
+        <if test="dimension == 'personal' and dimensionValue != null and dimensionValue != 'all' and dimensionValue != 'ALL'">
+            and fc.create_user = #{dimensionValue,jdbcType=VARCHAR}
+        </if>
+        <if test="dimension == 'project' and dimensionValue != null and dimensionValue != 'ALL' and dimensionValue != 'all'">
+            and fc.project_id = #{dimensionValue,jdbcType=VARCHAR}
+        </if>
+        
+        <!-- 只有非特定操作类型的指标才使用用例创建时间过滤 -->
+        <if test="metricType != 'reuseRateByCount' and metricType != 'reuseRateByWorkload' and metricType != 'absoluteTimeSavings' and metricType != 'timeSavingRate' and metricType != 'planCaseReuseRate' and metricType != 'caseChangeHeat' and metricType != 'planCaseModifyRate' and metricType != 'highFreqCaseCount' and metricType != 'highValueExecRate'">
+            <if test="startTime != null">
+                and fc.create_time &gt;= #{startTime,jdbcType=BIGINT}
+            </if>
+            <if test="endTime != null">
+                and fc.create_time &lt;= #{endTime,jdbcType=BIGINT}
+            </if>
+        </if>
+
+        order by cmd.cs_score desc, fc.create_time desc
+        <if test="offset != null and limit != null">
+            limit #{offset}, #{limit}
+        </if>
+    </select>
+
+    <!-- 统计符合条件的用例总数 -->
+    <select id="countCasesByMetricDirect" resultType="java.lang.Long">
+        select count(distinct fc.id)
+        from spotter_efficiency.case_metrics_detail cmd
+        inner join functional_case fc on cmd.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+        
+        <!-- 根据 metricType 动态添加 JOIN -->
+        <choose>
+            <when test="metricType == 'reuseRateByCount' or metricType == 'reuseRateByWorkload' or metricType == 'absoluteTimeSavings' or metricType == 'timeSavingRate' or metricType == 'planCaseReuseRate'">
+                and cmd.case_source_type in ('REUSE', 'COPY')
+                <if test="startTime != null">
+                    and cmd.create_time &gt;= #{startTime,jdbcType=BIGINT}
+                </if>
+                <if test="endTime != null">
+                    and cmd.create_time &lt;= #{endTime,jdbcType=BIGINT}
+                </if>
+            </when>
+            <when test="metricType == 'caseChangeHeat' or metricType == 'planCaseModifyRate'">
+                inner join spotter_efficiency.case_change_log ccl on fc.id = ccl.case_id
+                <if test="startTime != null">
+                    and ccl.create_time &gt;= #{startTime,jdbcType=BIGINT}
+                </if>
+                <if test="endTime != null">
+                    and ccl.create_time &lt;= #{endTime,jdbcType=BIGINT}
+                </if>
+            </when>
+            <when test="metricType == 'highFreqCaseCount' or metricType == 'highValueExecRate'">
+                inner join (
+                    select case_id 
+                    from spotter_efficiency.test_plan_case_metrics
+                    where 1=1
+                    <if test="startTime != null">
+                        and create_time &gt;= #{startTime,jdbcType=BIGINT}
+                    </if>
+                    <if test="endTime != null">
+                        and create_time &lt;= #{endTime,jdbcType=BIGINT}
+                    </if>
+                    group by case_id
+                    having sum(exec_count) &gt;= 3
+                ) cer_high on fc.id = cer_high.case_id
+            </when>
+        </choose>
+
+        where fc.deleted = 0
+        <if test="dimension == 'personal' and dimensionValue != null and dimensionValue != 'all' and dimensionValue != 'ALL'">
+            and fc.create_user = #{dimensionValue,jdbcType=VARCHAR}
+        </if>
+        <if test="dimension == 'project' and dimensionValue != null and dimensionValue != 'ALL' and dimensionValue != 'all'">
+            and fc.project_id = #{dimensionValue,jdbcType=VARCHAR}
+        </if>
+
+        <!-- 只有非特定操作类型的指标才使用用例创建时间过滤 -->
+        <if test="metricType != 'reuseRateByCount' and metricType != 'reuseRateByWorkload' and metricType != 'absoluteTimeSavings' and metricType != 'timeSavingRate' and metricType != 'planCaseReuseRate' and metricType != 'caseChangeHeat' and metricType != 'planCaseModifyRate' and metricType != 'highFreqCaseCount' and metricType != 'highValueExecRate'">
+            <if test="startTime != null">
+                and fc.create_time &gt;= #{startTime,jdbcType=BIGINT}
+            </if>
+            <if test="endTime != null">
+                and fc.create_time &lt;= #{endTime,jdbcType=BIGINT}
+            </if>
+        </if>
+    </select>
+
+    <!-- 根据用例ID列表获取CS详情（优化：只查询计算指标所需字段）-->
+    <select id="getCsDetailsByCaseIds" resultType="io.vanguard.testops.functional.domain.CaseMetricsDetail">
+        select 
+            case_id as caseId,
+            cs_score as csScore,
+            complexity_level as complexityLevel,
+            algo_expected_write_ms as algoExpectedWriteMs,
+            algo_expected_exec_ms as algoExpectedExecMs,
+            platform_actual_write_ms as platformActualWriteMs
+        from spotter_efficiency.case_metrics_detail
+        where case_id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <!-- 获取执行统计数据（从 test_plan_case_metrics，用于 UQS 计算和执行效率指标） -->
+    <select id="getExecutionStats" resultType="java.util.Map">
+        select 
+            count(distinct case when tpcm.first_exec_result is not null then tpcm.case_id end) as first_exec_count,
+            count(distinct case when tpcm.first_exec_result = 'SUCCESS' then tpcm.case_id end) as first_pass_count,
+            count(distinct case when tpcm.exec_count > 0 then tpcm.case_id end) as executed_case_count,
+            sum(tpcm.exec_count) as total_exec_count,
+            count(distinct case when tpcm.is_blocked_run = 0 and tpcm.last_exec_result = 'SUCCESS' then tpcm.case_id end) as success_without_block_count,
+            -- 平均用例执行时长 = 总执行时长 / 执行次数
+            round(sum(tpcm.total_time_ms) / nullif(sum(tpcm.exec_count), 0)) as avg_duration,
+            sum(tpcm.total_time_ms) as total_duration,
+            -- 手动用例执行热度 = Σ(高频用例的CS总分) / Σ(所有用例的CS总分) × 100%
+            -- 高频用例：执行次数 >= 3（包含3次）
+            sum(case when tpcm.exec_count >= 3 then coalesce(cmd.cs_score, 0) else 0 end) as high_freq_cs_total,
+            sum(coalesce(cmd.cs_score, 0)) as all_exec_cs_total
+        from spotter_efficiency.test_plan_case_metrics tpcm
+        left join spotter_efficiency.case_metrics_detail cmd on tpcm.case_id = cmd.case_id
+        where tpcm.case_id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+        <if test="startTime != null">
+            and tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <!-- 首次通过率与需求质量视图一致：从 case_execution_record 按 (plan_id, case_id) 取时间范围内最早一条执行结果 -->
+    <select id="getFirstPassStatsFromCaseExecutionRecord" resultType="java.util.Map">
+        select
+            (select count(*) from (
+                select cer.plan_id, cer.case_id
+                from spotter_efficiency.case_execution_record cer
+                where cer.case_id in
+                <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+                    #{caseId,jdbcType=VARCHAR}
+                </foreach>
+                <if test="startTime != null">
+                    and cer.create_time &gt;= #{startTime,jdbcType=BIGINT}
+                </if>
+                <if test="endTime != null">
+                    and cer.create_time &lt;= #{endTime,jdbcType=BIGINT}
+                </if>
+                group by cer.plan_id, cer.case_id
+            ) tot) as first_exec_count,
+            (select count(*) from (
+                select cer.plan_id, cer.case_id
+                from spotter_efficiency.case_execution_record cer
+                inner join (
+                    select plan_id, case_id, min(create_time) as first_time
+                    from spotter_efficiency.case_execution_record
+                    where case_id in
+                    <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+                        #{caseId,jdbcType=VARCHAR}
+                    </foreach>
+                    <if test="startTime != null">
+                        and create_time &gt;= #{startTime,jdbcType=BIGINT}
+                    </if>
+                    <if test="endTime != null">
+                        and create_time &lt;= #{endTime,jdbcType=BIGINT}
+                    </if>
+                    group by plan_id, case_id
+                ) first_t on first_t.plan_id COLLATE utf8mb4_general_ci = cer.plan_id COLLATE utf8mb4_general_ci
+                    and first_t.case_id COLLATE utf8mb4_general_ci = cer.case_id COLLATE utf8mb4_general_ci
+                    and first_t.first_time = cer.create_time
+                where cer.case_id in
+                <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+                    #{caseId,jdbcType=VARCHAR}
+                </foreach>
+                <if test="startTime != null">
+                    and cer.create_time &gt;= #{startTime,jdbcType=BIGINT}
+                </if>
+                <if test="endTime != null">
+                    and cer.create_time &lt;= #{endTime,jdbcType=BIGINT}
+                </if>
+                and cer.exec_result in ('SUCCESS','PASS')
+            ) fp) as first_pass_count
+    </select>
+
+    <!-- 执行热度（仅回归用例库）：按 source_case_id 归父后汇总 -->
+    <select id="getExecutionStatsForRegressionWithParent" resultType="java.util.Map">
+        select
+            sum(pa.parent_exec_count) as total_exec_count,
+            sum(pa.parent_duration) as total_duration,
+            round(sum(pa.parent_duration) / nullif(sum(pa.parent_exec_count), 0)) as avg_duration,
+            sum(case when pa.parent_exec_count &gt;= 3 then coalesce(cmd_p.cs_score, 0) else 0 end) as high_freq_cs_total,
+            sum(coalesce(cmd_p.cs_score, 0)) as all_exec_cs_total
+        from (
+            select
+                coalesce(cmd.source_case_id, tpcm.case_id) as parent_id,
+                sum(tpcm.exec_count) as parent_exec_count,
+                sum(tpcm.total_time_ms) as parent_duration
+            from spotter_efficiency.test_plan_case_metrics tpcm
+            left join spotter_efficiency.case_metrics_detail cmd on tpcm.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+            inner join functional_case fc on fc.id COLLATE utf8mb4_general_ci = coalesce(cmd.source_case_id, tpcm.case_id) COLLATE utf8mb4_general_ci and fc.deleted = 0
+            inner join functional_case_module fcm on fc.module_id = fcm.id and fcm.name = #{regressionModuleName,jdbcType=VARCHAR}
+            where 1=1
+            <if test="projectId != null and projectId != ''">
+                and tpcm.project_id = #{projectId,jdbcType=VARCHAR}
+            </if>
+            <if test="startTime != null">
+                and tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+            </if>
+            <if test="endTime != null">
+                and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+            </if>
+            group by coalesce(cmd.source_case_id, tpcm.case_id)
+        ) pa
+        left join spotter_efficiency.case_metrics_detail cmd_p on cmd_p.case_id COLLATE utf8mb4_general_ci = pa.parent_id COLLATE utf8mb4_general_ci
+    </select>
+
+    <!-- 根据计划 id 解析计划组 id（type=GROUP 时返回 id，否则返回 group_id） -->
+    <select id="getGroupIdByPlanId" resultType="java.lang.String">
+        select case when tp.type = 'GROUP' then tp.id else tp.group_id end
+        from spotter_aegis.test_plan tp
+        where tp.id = #{planId,jdbcType=VARCHAR}
+        limit 1
+    </select>
+
+    <!-- 计划组内用例总数（该组下所有测试计划的用例去重） -->
+    <select id="countPlanGroupCaseTotal" resultType="java.lang.Long">
+        select count(distinct tpfc.functional_case_id)
+        from test_plan_functional_case tpfc
+        inner join spotter_aegis.test_plan tp on tpfc.test_plan_id = tp.id
+        where (tp.group_id = #{groupId,jdbcType=VARCHAR} and tp.type = 'TEST_PLAN') or tp.id = #{groupId,jdbcType=VARCHAR}
+    </select>
+
+    <!-- 计划组内「新增来源」用例数（在计划组内至少有一条 test_plan_case_metrics 且 case_source_type=NEW 的去重用例） -->
+    <select id="countPlanGroupNewCases" resultType="java.lang.Long">
+        select count(distinct tpfc.functional_case_id)
+        from test_plan_functional_case tpfc
+        inner join spotter_aegis.test_plan tp on tpfc.test_plan_id = tp.id
+        inner join spotter_efficiency.test_plan_case_metrics tpcm
+            on tpcm.test_plan_id = tpfc.test_plan_id and tpcm.case_id = tpfc.functional_case_id
+        where ((tp.group_id = #{groupId,jdbcType=VARCHAR} and tp.type = 'TEST_PLAN') or tp.id = #{groupId,jdbcType=VARCHAR})
+          and (tpcm.case_source_type = 'NEW' or tpcm.case_source_type is null)
+    </select>
+
+    <!-- 计划组内变更次数（case_change_log 中非 CASE_COPY 且 case_id 属于计划组用例的去重数量） -->
+    <select id="countPlanGroupModifiedCases" resultType="java.lang.Long">
+        select count(distinct ccl.case_id)
+        from spotter_efficiency.case_change_log ccl
+        where (ccl.change_reason is null or ccl.change_reason != 'CASE_COPY')
+        <if test="startTime != null">
+            and ccl.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and ccl.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        and ccl.case_id in (
+            select distinct tpfc.functional_case_id
+            from test_plan_functional_case tpfc
+            inner join spotter_aegis.test_plan tp on tpfc.test_plan_id = tp.id
+            where (tp.group_id = #{groupId,jdbcType=VARCHAR} and tp.type = 'TEST_PLAN') or tp.id = #{groupId,jdbcType=VARCHAR}
+        )
+    </select>
+
+    <!-- 获取实际执行时间（按测试计划组维度：汇总周期内测试计划组下所有测试计划的执行时间） -->
+    <select id="getActualExecutionTime" resultType="java.util.Map">
+        select 
+            coalesce(sum(tpm.total_actual_exec_ms), 0) as total_actual_exec_ms,
+            count(distinct tp.id) as exec_plan_count
+        from spotter_efficiency.test_plan_metrics tpm
+        inner join spotter_aegis.test_plan tp on tpm.test_plan_id COLLATE utf8mb4_general_ci = tp.id COLLATE utf8mb4_general_ci
+        where tp.group_id in (
+            select tpg.id
+            from spotter_aegis.test_plan tpg
+            where tpg.type = 'GROUP'
+            <if test="projectId != null and projectId != '' and projectId != 'ALL'">
+                and tpg.project_id = #{projectId,jdbcType=VARCHAR}
+            </if>
+            <if test="startTime != null">
+                and tpg.create_time &gt;= #{startTime,jdbcType=BIGINT}
+            </if>
+            <if test="endTime != null">
+                and tpg.create_time &lt;= #{endTime,jdbcType=BIGINT}
+            </if>
+            <if test="storyIds != null and storyIds.size() > 0">
+                and tpg.feishu_story_id COLLATE utf8mb4_general_ci in
+                <foreach collection="storyIds" item="storyId" open="(" separator="," close=")">
+                    #{storyId,jdbcType=VARCHAR}
+                </foreach>
+            </if>
+        )
+        and tp.type = 'TEST_PLAN'
+    </select>
+
+    <!-- 获取实际编写工时（按测试计划组维度：获取周期内测试计划组关联的需求的测分编写时间，同一需求只计算一次） -->
+    <select id="getActualWriteTime" resultType="java.util.Map">
+        select 
+            coalesce(sum(mss.test_analysis_time * 8 * 60 * 60 * 1000), 0) as total_actual_write_ms,
+            count(distinct mss.story_id) as write_story_count
+        from spotter_efficiency.meego_story_stats mss
+        where mss.story_id COLLATE utf8mb4_general_ci in (
+            select distinct tpg.feishu_story_id COLLATE utf8mb4_general_ci
+            from spotter_aegis.test_plan tpg
+            where tpg.type = 'GROUP'
+              and tpg.feishu_story_id is not null
+              and tpg.feishu_story_id != ''
+            <if test="projectId != null and projectId != '' and projectId != 'ALL'">
+                and tpg.project_id = #{projectId,jdbcType=VARCHAR}
+            </if>
+            <if test="startTime != null">
+                and tpg.create_time &gt;= #{startTime,jdbcType=BIGINT}
+            </if>
+            <if test="endTime != null">
+                and tpg.create_time &lt;= #{endTime,jdbcType=BIGINT}
+            </if>
+            <if test="storyIds != null and storyIds.size() > 0">
+                and tpg.feishu_story_id COLLATE utf8mb4_general_ci in
+                <foreach collection="storyIds" item="storyId" open="(" separator="," close=")">
+                    #{storyId,jdbcType=VARCHAR}
+                </foreach>
+            </if>
+        )
+        and mss.test_analysis_time is not null
+        and mss.test_analysis_time > 0
+    </select>
+
+    <!-- 获取预期编写/执行工时（按测试计划组维度：周期内创建且关联需求的测试计划组下的用例预期工时，不去重） -->
+    <select id="getExpectedTimeByTestPlanGroup" resultType="java.util.Map">
+        select 
+            coalesce(sum(cmd.algo_expected_write_ms), 0) as total_expected_write_ms,
+            coalesce(sum(cmd.algo_expected_exec_ms), 0) as total_expected_exec_ms,
+            count(cmd.case_id) as case_count
+        from spotter_aegis.test_plan tpg
+        inner join spotter_aegis.test_plan tp on tp.group_id = tpg.id and tp.type = 'TEST_PLAN'
+        inner join spotter_efficiency.test_plan_case_metrics tpcm 
+            on tp.id COLLATE utf8mb4_general_ci = tpcm.test_plan_id COLLATE utf8mb4_general_ci
+        inner join spotter_efficiency.case_metrics_detail cmd 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+        where tpg.type = 'GROUP'
+          and tpg.feishu_story_id is not null
+          and tpg.feishu_story_id != ''
+        <if test="projectId != null and projectId != '' and projectId != 'ALL'">
+            and tpg.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and tpg.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and tpg.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="storyIds != null and storyIds.size() > 0">
+            and tpg.feishu_story_id COLLATE utf8mb4_general_ci in
+            <foreach collection="storyIds" item="storyId" open="(" separator="," close=")">
+                #{storyId,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+    </select>
+
+    <!-- 获取预期编写/执行工时按复杂度分级（按测试计划组维度：周期内创建且关联需求的测试计划组下的用例预期工时，不去重） -->
+    <select id="getExpectedTimeByLevelFromTestPlanGroup" resultType="java.util.Map">
+        select 
+            cmd.complexity_level as complexity_level,
+            coalesce(sum(cmd.algo_expected_write_ms), 0) as expected_write_ms,
+            coalesce(sum(cmd.algo_expected_exec_ms), 0) as expected_exec_ms,
+            count(cmd.case_id) as case_count
+        from spotter_aegis.test_plan tpg
+        inner join spotter_aegis.test_plan tp on tp.group_id = tpg.id and tp.type = 'TEST_PLAN'
+        inner join spotter_efficiency.test_plan_case_metrics tpcm 
+            on tp.id COLLATE utf8mb4_general_ci = tpcm.test_plan_id COLLATE utf8mb4_general_ci
+        inner join spotter_efficiency.case_metrics_detail cmd 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+        where tpg.type = 'GROUP'
+          and tpg.feishu_story_id is not null
+          and tpg.feishu_story_id != ''
+          and cmd.complexity_level is not null
+        <if test="projectId != null and projectId != '' and projectId != 'ALL'">
+            and tpg.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and tpg.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and tpg.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="storyIds != null and storyIds.size() > 0">
+            and tpg.feishu_story_id COLLATE utf8mb4_general_ci in
+            <foreach collection="storyIds" item="storyId" open="(" separator="," close=")">
+                #{storyId,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        group by cmd.complexity_level
+    </select>
+
+    <!-- 获取用例变更原因分布统计（排除 copy 变更：用例复用以前的用例不统计在此指标内） -->
+    <select id="getChangeReasonDistribution" resultType="java.util.Map">
+        select 
+            change_reason,
+            count(distinct case_id) as count
+        from spotter_efficiency.case_change_log
+        where 1=1
+        and change_reason != 'CASE_COPY'
+        <if test="projectId != null and projectId != 'ALL'">
+            and project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null and userId != 'all'">
+            and operator = #{userId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="caseIds != null and caseIds.size() > 0">
+            and case_id in
+            <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+                #{caseId,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        group by change_reason
+        order by count desc
+    </select>
+
+    <!-- 获取测试用例执行阻塞原因分布统计 -->
+    <select id="getBlockedReasonDistribution" resultType="java.util.Map">
+        select 
+            block_reason,
+            count(distinct case_id) as count
+        from spotter_efficiency.test_plan_case_metrics
+        where is_blocked_run = 1
+        and block_reason is not null
+        <if test="projectId != null and projectId != 'ALL'">
+            and project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        <if test="caseIds != null and caseIds.size() > 0">
+            and case_id in
+            <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+                #{caseId,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        group by block_reason
+        order by count desc
+    </select>
+    
+    <!-- 统计已执行的用例数（exec_count > 0） -->
+    <select id="countExecutedCases" resultType="java.lang.Long">
+        select count(distinct case_id)
+        from spotter_efficiency.test_plan_case_metrics
+        where case_id in
+        <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+            #{caseId,jdbcType=VARCHAR}
+        </foreach>
+        and exec_count > 0
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+    
+    <!-- 查询用例对应的测试计划的总缺陷数（从 test_plan_metrics 聚合） -->
+    <select id="getTotalDefectCountForCases" resultType="java.lang.Integer">
+        select COALESCE(SUM(tpm.total_defect_count), 0)
+        from spotter_efficiency.test_plan_metrics tpm
+        where tpm.test_plan_id in (
+            select distinct test_plan_id
+            from spotter_efficiency.test_plan_case_metrics
+            where case_id in
+            <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+                #{caseId,jdbcType=VARCHAR}
+            </foreach>
+        )
+        <if test="startTime != null">
+            and tpm.last_calc_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and tpm.last_calc_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+    
+    <!-- 查询时间范围内的复用用例详情：case_source_type 为 REUSE/COPY，且来源用例在两库；仅统计未删除的复用用例与未删除的来源用例 -->
+    <select id="getReusedCaseDetailsBySourceType" resultType="io.vanguard.testops.functional.domain.CaseMetricsDetail">
+        select
+            cmd.case_id as caseId,
+            cmd.cs_score as csScore,
+            cmd.complexity_level as complexityLevel,
+            cmd.algo_expected_write_ms as algoExpectedWriteMs,
+            cmd.algo_expected_exec_ms as algoExpectedExecMs,
+            cmd.case_source_type as caseSourceType,
+            cmd.reuse_type as reuseType,
+            cmd.create_time as createTime,
+            cmd.update_time as updateTime
+        from spotter_efficiency.case_metrics_detail cmd
+        inner join functional_case fc on fc.id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci and (fc.deleted IS NULL OR fc.deleted = 0)
+        <if test="twoLibraryModuleNames != null and twoLibraryModuleNames.size() > 0">
+            inner join functional_case fc_src on cmd.source_case_id COLLATE utf8mb4_general_ci = fc_src.id COLLATE utf8mb4_general_ci and fc_src.deleted = 0
+            inner join functional_case_module fcm on fc_src.module_id = fcm.id
+            and fcm.name in
+            <foreach collection="twoLibraryModuleNames" item="name" open="(" separator="," close=")">
+                #{name,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        where 1=1
+        <if test="twoLibraryModuleNames != null and twoLibraryModuleNames.size() > 0">
+            and cmd.source_case_id is not null
+        </if>
+        <if test="projectIds != null and projectIds.size() > 0">
+            and cmd.project_id in
+            <foreach collection="projectIds" item="id" open="(" separator="," close=")">
+                #{id,jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        <if test="(projectIds == null or projectIds.size() == 0) and projectId != null and projectId != 'ALL'">
+            and cmd.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        and cmd.case_source_type in ('REUSE', 'COPY')
+        <if test="startTime != null">
+            and cmd.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and cmd.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+    
+    <!-- 统计时间范围内的复用用例数量（根据 case_source_type 字段判断） -->
+    <select id="countReusedCasesBySourceType" resultType="java.lang.Long">
+        select count(distinct cmd.case_id)
+        from spotter_efficiency.case_metrics_detail cmd
+        <if test="userId != null and userId != 'all'">
+            inner join functional_case fc on cmd.case_id = fc.id
+        </if>
+        where 1=1
+        <if test="projectId != null and projectId != 'ALL'">
+            and cmd.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null and userId != 'all'">
+            and fc.create_user = #{userId,jdbcType=VARCHAR}
+        </if>
+        and cmd.case_source_type in ('REUSE', 'COPY')
+        <if test="startTime != null">
+            and cmd.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and cmd.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+    
+    <!-- 统计时间范围内被修改的用例数（从 case_change_log 表） -->
+    <select id="countModifiedCasesByChangeLog" resultType="java.lang.Long">
+        select count(distinct case_id)
+        from spotter_efficiency.case_change_log
+        where 1=1
+        <if test="projectId != null and projectId != 'ALL'">
+            and project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null and userId != 'all'">
+            and operator = #{userId,jdbcType=VARCHAR}
+        </if>
+        <if test="startTime != null">
+            and create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <!-- 查询需求列表（支持模糊搜索，关联测试计划和用例统计） -->
+    <select id="getRequirementsList" resultType="io.vanguard.testops.functional.dto.dashboard.RequirementDTO">
+        select 
+            mss.story_id as story_id,
+            mss.story_name as story_name,
+            mss.defect_count as defect_count,
+            mss.test_analysis_time as test_analysis_time,
+            count(distinct tp.id) as related_test_plan_count,
+            count(distinct tpcm.case_id) as related_case_count
+        from spotter_efficiency.meego_story_stats mss
+        left join spotter_aegis.test_plan tp 
+            on mss.story_id COLLATE utf8mb4_general_ci = tp.feishu_story_id COLLATE utf8mb4_general_ci
+            <if test="projectId != null and projectId != 'ALL' and projectId != 'all'">
+                and tp.project_id COLLATE utf8mb4_general_ci = #{projectId,jdbcType=VARCHAR}
+            </if>
+            <if test="startTime != null">
+                and tp.create_time &gt;= #{startTime,jdbcType=BIGINT}
+            </if>
+            <if test="endTime != null">
+                and tp.create_time &lt;= #{endTime,jdbcType=BIGINT}
+            </if>
+        left join spotter_efficiency.test_plan_case_metrics tpcm 
+            on tp.id COLLATE utf8mb4_general_ci = tpcm.test_plan_id COLLATE utf8mb4_general_ci
+        where 1=1
+        <if test="keyword != null and keyword != ''">
+            and (mss.story_name like concat('%', #{keyword,jdbcType=VARCHAR}, '%')
+                 or mss.story_id like concat('%', #{keyword,jdbcType=VARCHAR}, '%'))
+        </if>
+        group by mss.story_id, mss.story_name, mss.defect_count, mss.test_analysis_time
+        having count(distinct tp.id) > 0
+        order by related_case_count desc
+        limit 100
+    </select>
+
+    <!-- 根据需求ID列表查询关联的用例ID列表 -->
+    <select id="getCaseIdsByRequirements" resultType="java.lang.String">
+        select distinct tpcm.case_id
+        from spotter_aegis.test_plan tp
+        inner join spotter_efficiency.test_plan_case_metrics tpcm 
+            on tp.id COLLATE utf8mb4_general_ci = tpcm.test_plan_id COLLATE utf8mb4_general_ci
+        where tp.feishu_story_id COLLATE utf8mb4_general_ci in
+        <foreach collection="storyIds" item="storyId" open="(" separator="," close=")">
+            #{storyId,jdbcType=VARCHAR}
+        </foreach>
+        <if test="startTime != null">
+            and tp.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and tp.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+    </select>
+
+    <!-- 根据变更原因查询用例列表（含需求信息） -->
+    <select id="getCasesByChangeReason" resultType="io.vanguard.testops.functional.dto.dashboard.CaseWithRequirementDTO">
+        select 
+            ccl.case_id as case_id,
+            coalesce(fc.name, ccl.case_id) as case_name,
+            fc.num as case_num,
+            cmd.cs_score as cs_score,
+            cmd.complexity_level as complexity_level,
+            (select tp2.feishu_story_id 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = ccl.case_id COLLATE utf8mb4_general_ci
+             limit 1) as story_id,
+            (select mss2.story_name 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             inner join spotter_efficiency.meego_story_stats mss2 
+                on tp2.feishu_story_id COLLATE utf8mb4_general_ci = mss2.story_id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = ccl.case_id COLLATE utf8mb4_general_ci
+             limit 1) as story_name,
+            (select tp2.id 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = ccl.case_id COLLATE utf8mb4_general_ci
+             limit 1) as test_plan_id,
+            (select tp2.name 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = ccl.case_id COLLATE utf8mb4_general_ci
+             limit 1) as test_plan_name,
+            ccl.change_reason as change_reason,
+            max(ccl.create_time) as create_time
+        from spotter_efficiency.case_change_log ccl
+        left join functional_case fc 
+            on ccl.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+            and fc.deleted = 0
+        left join spotter_efficiency.case_metrics_detail cmd 
+            on ccl.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+        where ccl.change_reason = #{changeReason,jdbcType=VARCHAR}
+        <if test="projectId != null and projectId != 'ALL' and projectId != 'all'">
+            and ccl.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null and userId != 'all' and userId != 'ALL'">
+            and (fc.create_user = #{userId,jdbcType=VARCHAR} or fc.id is null)
+        </if>
+        <if test="startTime != null">
+            and ccl.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and ccl.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        group by ccl.case_id, fc.name, fc.num, cmd.cs_score, cmd.complexity_level, ccl.change_reason
+        order by create_time desc, case_num desc
+        limit 100
+    </select>
+
+    <!-- 根据阻塞原因查询用例列表（含需求信息） -->
+    <select id="getCasesByBlockReason" resultType="io.vanguard.testops.functional.dto.dashboard.CaseWithRequirementDTO">
+        select 
+            tpcm.case_id as case_id,
+            coalesce(fc.name, tpcm.case_id) as case_name,
+            fc.num as case_num,
+            cmd.cs_score as cs_score,
+            cmd.complexity_level as complexity_level,
+            (select tp2.feishu_story_id 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+               and tpcm2.block_reason = #{blockReason,jdbcType=VARCHAR}
+               and tpcm2.is_blocked_run = 1
+             limit 1) as story_id,
+            (select mss2.story_name 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             inner join spotter_efficiency.meego_story_stats mss2 
+                on tp2.feishu_story_id COLLATE utf8mb4_general_ci = mss2.story_id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+               and tpcm2.block_reason = #{blockReason,jdbcType=VARCHAR}
+               and tpcm2.is_blocked_run = 1
+             limit 1) as story_name,
+            (select tp2.id 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+               and tpcm2.block_reason = #{blockReason,jdbcType=VARCHAR}
+               and tpcm2.is_blocked_run = 1
+             limit 1) as test_plan_id,
+            (select tp2.name 
+             from spotter_efficiency.test_plan_case_metrics tpcm2
+             inner join spotter_aegis.test_plan tp2 
+                on tpcm2.test_plan_id COLLATE utf8mb4_general_ci = tp2.id COLLATE utf8mb4_general_ci
+             where tpcm2.case_id COLLATE utf8mb4_general_ci = tpcm.case_id COLLATE utf8mb4_general_ci
+               and tpcm2.block_reason = #{blockReason,jdbcType=VARCHAR}
+               and tpcm2.is_blocked_run = 1
+             limit 1) as test_plan_name,
+            tpcm.block_reason as block_reason,
+            max(tpcm.create_time) as create_time
+        from spotter_efficiency.test_plan_case_metrics tpcm
+        left join functional_case fc 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = fc.id COLLATE utf8mb4_general_ci
+            and fc.deleted = 0
+        left join spotter_efficiency.case_metrics_detail cmd 
+            on tpcm.case_id COLLATE utf8mb4_general_ci = cmd.case_id COLLATE utf8mb4_general_ci
+        where tpcm.block_reason = #{blockReason,jdbcType=VARCHAR}
+          and tpcm.is_blocked_run = 1
+        <if test="projectId != null and projectId != 'ALL' and projectId != 'all'">
+            and tpcm.project_id = #{projectId,jdbcType=VARCHAR}
+        </if>
+        <if test="userId != null and userId != 'all' and userId != 'ALL'">
+            and (fc.create_user = #{userId,jdbcType=VARCHAR} or fc.id is null)
+        </if>
+        <if test="startTime != null">
+            and tpcm.create_time &gt;= #{startTime,jdbcType=BIGINT}
+        </if>
+        <if test="endTime != null">
+            and tpcm.create_time &lt;= #{endTime,jdbcType=BIGINT}
+        </if>
+        group by tpcm.case_id, fc.name, fc.num, cmd.cs_score, cmd.complexity_level, tpcm.block_reason
+        order by create_time desc, case_num desc
+        limit 100
+    </select>
+
+</mapper>

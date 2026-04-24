@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.plan.mapper.TestPlanMetricsMapper">
+  <resultMap id="BaseResultMap" type="io.vanguard.testops.plan.domain.TestPlanMetrics">
+    <id column="id" jdbcType="VARCHAR" property="id" />
+    <result column="test_plan_id" jdbcType="VARCHAR" property="testPlanId" />
+    <result column="project_id" jdbcType="VARCHAR" property="projectId" />
+    <result column="env_instability_factor" jdbcType="DECIMAL" property="envInstabilityFactor" />
+    <result column="total_cases" jdbcType="INTEGER" property="totalCases" />
+    <result column="first_pass_rate" jdbcType="DECIMAL" property="firstPassRate" />
+    <result column="avg_cs_score" jdbcType="DECIMAL" property="avgCsScore" />
+    <result column="total_algo_write_ms" jdbcType="BIGINT" property="totalAlgoWriteMs" />
+    <result column="total_algo_exec_ms" jdbcType="BIGINT" property="totalAlgoExecMs" />
+    <result column="write_deviation_rate" jdbcType="DECIMAL" property="writeDeviationRate" />
+    <result column="reuse_saving_hours" jdbcType="DECIMAL" property="reuseSavingHours" />
+    <result column="total_defect_count" jdbcType="INTEGER" property="totalDefectCount" />
+    <result column="start_time" jdbcType="BIGINT" property="startTime" />
+    <result column="end_time" jdbcType="BIGINT" property="endTime" />
+    <result column="last_calc_time" jdbcType="BIGINT" property="lastCalcTime" />
+    <result column="total_actual_exec_ms" jdbcType="BIGINT" property="totalActualExecMs" />
+    <result column="total_actual_reading_ms" jdbcType="BIGINT" property="totalActualReadingMs" />
+    <result column="total_actual_time_ms" jdbcType="BIGINT" property="totalActualTimeMs" />
+    <result column="avg_exec_deviation_rate" jdbcType="DECIMAL" property="avgExecDeviationRate" />
+    <result column="complexity_variance" jdbcType="DECIMAL" property="complexityVariance" />
+  </resultMap>
+
+  <sql id="Base_Column_List">
+    id, test_plan_id, project_id, env_instability_factor, total_cases, first_pass_rate, 
+    avg_cs_score, total_algo_write_ms, total_algo_exec_ms, write_deviation_rate, 
+    reuse_saving_hours, total_defect_count, start_time, end_time, last_calc_time,
+    total_actual_exec_ms, total_actual_reading_ms, total_actual_time_ms, 
+    avg_exec_deviation_rate, complexity_variance
+  </sql>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.test_plan_metrics
+    where id = #{id,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectByTestPlanId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.test_plan_metrics
+    where test_plan_id = #{testPlanId,jdbcType=VARCHAR}
+  </select>
+
+  <insert id="insert" parameterType="io.vanguard.testops.plan.domain.TestPlanMetrics">
+    insert into spotter_efficiency.test_plan_metrics (id, test_plan_id, project_id, 
+      env_instability_factor, total_cases, first_pass_rate, 
+      avg_cs_score, total_algo_write_ms, total_algo_exec_ms, write_deviation_rate,
+      reuse_saving_hours, total_defect_count, start_time, end_time, 
+      last_calc_time, total_actual_exec_ms, total_actual_reading_ms, total_actual_time_ms, 
+      avg_exec_deviation_rate, complexity_variance)
+    values (#{id,jdbcType=VARCHAR}, #{testPlanId,jdbcType=VARCHAR}, #{projectId,jdbcType=VARCHAR}, 
+      #{envInstabilityFactor,jdbcType=DECIMAL}, #{totalCases,jdbcType=INTEGER}, #{firstPassRate,jdbcType=DECIMAL}, 
+      #{avgCsScore,jdbcType=DECIMAL}, #{totalAlgoWriteMs,jdbcType=BIGINT}, #{totalAlgoExecMs,jdbcType=BIGINT}, 
+      #{writeDeviationRate,jdbcType=DECIMAL}, #{reuseSavingHours,jdbcType=DECIMAL}, #{totalDefectCount,jdbcType=INTEGER}, 
+      #{startTime,jdbcType=BIGINT}, #{endTime,jdbcType=BIGINT}, 
+      #{lastCalcTime,jdbcType=BIGINT}, #{totalActualExecMs,jdbcType=BIGINT}, #{totalActualReadingMs,jdbcType=BIGINT}, 
+      #{totalActualTimeMs,jdbcType=BIGINT}, #{avgExecDeviationRate,jdbcType=DECIMAL}, #{complexityVariance,jdbcType=DECIMAL})
+  </insert>
+
+  <update id="updateByPrimaryKey" parameterType="io.vanguard.testops.plan.domain.TestPlanMetrics">
+    update spotter_efficiency.test_plan_metrics
+    set test_plan_id = #{testPlanId,jdbcType=VARCHAR},
+      project_id = #{projectId,jdbcType=VARCHAR},
+      env_instability_factor = #{envInstabilityFactor,jdbcType=DECIMAL},
+      total_cases = #{totalCases,jdbcType=INTEGER},
+      first_pass_rate = #{firstPassRate,jdbcType=DECIMAL},
+      avg_cs_score = #{avgCsScore,jdbcType=DECIMAL},
+      total_algo_write_ms = #{totalAlgoWriteMs,jdbcType=BIGINT},
+      total_algo_exec_ms = #{totalAlgoExecMs,jdbcType=BIGINT},
+      write_deviation_rate = #{writeDeviationRate,jdbcType=DECIMAL},
+      reuse_saving_hours = #{reuseSavingHours,jdbcType=DECIMAL},
+      total_defect_count = #{totalDefectCount,jdbcType=INTEGER},
+      start_time = #{startTime,jdbcType=BIGINT},
+      end_time = #{endTime,jdbcType=BIGINT},
+      last_calc_time = #{lastCalcTime,jdbcType=BIGINT},
+      total_actual_exec_ms = #{totalActualExecMs,jdbcType=BIGINT},
+      total_actual_reading_ms = #{totalActualReadingMs,jdbcType=BIGINT},
+      total_actual_time_ms = #{totalActualTimeMs,jdbcType=BIGINT},
+      avg_exec_deviation_rate = #{avgExecDeviationRate,jdbcType=DECIMAL},
+      complexity_variance = #{complexityVariance,jdbcType=DECIMAL}
+    where id = #{id,jdbcType=VARCHAR}
+  </update>
+</mapper>

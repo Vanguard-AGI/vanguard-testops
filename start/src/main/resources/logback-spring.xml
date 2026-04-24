@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="true">
+    <property resource="commons.properties"/>
+    <!-- <property file="/opt/metersphere/conf/metersphere.properties"/> -->
+    <!-- 设置日志路径，如果环境变量未设置，使用默认值 -->
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="/opt/metersphere/logs/metersphere"/>
+    <!-- 控制台输出：线上环境只输出INFO及以上 -->
+    <springProfile name="prod,production">
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>INFO</level>
+            </filter>
+        <encoder>
+            <pattern>%d %5p %40.40c:%4L - %m%n</pattern>
+        </encoder>
+    </appender>
+    </springProfile>
+    
+    <!-- 控制台输出：线下环境可以输出DEBUG -->
+    <springProfile name="!prod,!production">
+        <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>DEBUG</level>
+            </filter>
+            <encoder>
+                <pattern>%d %5p %40.40c:%4L - %m%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <appender name="debugAppender"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <File>${LOG_PATH}/debug.log</File>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <FileNamePattern>${LOG_PATH}/history/debug.%d{yyyyMMdd}-%i.log</FileNamePattern>
+            <maxHistory>${logger.max.history:-30}</maxHistory>
+            <maxFileSize>50MB</maxFileSize>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <Pattern>%d [%thread] %-5level %logger{36} %line - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <appender name="infoAppender"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <File>${LOG_PATH}/info.log</File>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <FileNamePattern>${LOG_PATH}/history/info.%d{yyyyMMdd}-%i.log</FileNamePattern>
+            <maxHistory>${logger.max.history:-30}</maxHistory>
+            <maxFileSize>50MB</maxFileSize>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <Pattern>%d [%thread] %-5level %logger{36} %line - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <appender name="errorAppender"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+
+        <File>${LOG_PATH}/error.log</File>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <FileNamePattern>${LOG_PATH}/history/error.%d{yyyyMMdd}-%i.log</FileNamePattern>
+            <maxHistory>${logger.max.history:-30}</maxHistory>
+            <maxFileSize>50MB</maxFileSize>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <Pattern>%d [%thread] %-5level %logger{36} %line - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <appender name="warnAppender"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <File>${LOG_PATH}/warn.log</File>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <FileNamePattern>${LOG_PATH}/history/warn.%d{yyyyMMdd}-%i.log</FileNamePattern>
+            <maxHistory>${logger.max.history:-30}</maxHistory>
+            <maxFileSize>50MB</maxFileSize>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <Pattern>%d [%thread] %-5level %logger{36} %line - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <appender name="consoleAsyncAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <queueSize>10000</queueSize>
+        <appender-ref ref="console"/>
+    </appender>
+
+    <!-- Debug日志Appender - 始终定义，但仅在线下环境使用 -->
+    <appender name="debugAsyncAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+        <queueSize>10000</queueSize>
+        <appender-ref ref="debugAppender"/>
+    </appender>
+
+    <appender name="infoAsyncAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <queueSize>10000</queueSize>
+        <appender-ref ref="infoAppender"/>
+    </appender>
+
+    <appender name="errorAsyncAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <queueSize>10000</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="errorAppender"/>
+    </appender>
+
+    <appender name="warnAsyncAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+        <queueSize>10000</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="warnAppender"/>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="infoAsyncAppender"/>
+        <appender-ref ref="console"/>
+    </root>
+
+    <logger name="io.vanguard.testops" additivity="false" level="${logger.level:INFO}">
+        <appender-ref ref="infoAsyncAppender"/>
+        <appender-ref ref="warnAsyncAppender"/>
+        <appender-ref ref="errorAsyncAppender"/>
+        <appender-ref ref="console"/>
+        <!-- Debug日志仅在线下环境启用（非prod和production环境） -->
+        <springProfile name="dev,local,test">
+            <appender-ref ref="debugAsyncAppender"/>
+        </springProfile>
+    </logger>
+
+    <!--  包名不支持通配符 * ，这里需要每个模块固定好mapper  -->
+    <!-- 生产环境：mapper日志使用INFO级别，避免输出DEBUG SQL日志 -->
+    <springProfile name="prod,production">
+        <logger name="io.vanguard.testops.sdk.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.system.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.project.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.api.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.load.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.ui.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.plan.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.workstation.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+        <logger name="io.vanguard.testops.bug.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+    <!-- functional.mapper 使用 WARN 级别，避免打印大量用例ID的SQL参数日志 -->
+    <logger name="io.vanguard.testops.functional.mapper" level="WARN">
+        <appender-ref ref="console"/>
+    </logger>
+    <!-- metadata.mapper 使用 INFO 级别 -->
+    <logger name="io.vanguard.testops.metadata.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+    <!-- workflow.mapper 使用 INFO 级别 -->
+    <logger name="io.vanguard.testops.workflow.mapper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+    </springProfile>
+    
+    <!-- 非生产环境：mapper日志使用INFO级别，避免输出过多DEBUG SQL日志 -->
+    <springProfile name="!prod,!production">
+        <logger name="io.vanguard.testops.sdk.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.system.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.project.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.api.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.load.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.ui.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.plan.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.workstation.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <logger name="io.vanguard.testops.bug.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <!-- functional.mapper 使用 WARN 级别，避免打印大量用例ID的SQL参数日志 -->
+        <logger name="io.vanguard.testops.functional.mapper" level="WARN">
+            <appender-ref ref="console"/>
+        </logger>
+        <!-- metadata.mapper 使用 INFO 级别 -->
+        <logger name="io.vanguard.testops.metadata.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <!-- workflow.mapper 使用 INFO 级别 -->
+        <logger name="io.vanguard.testops.workflow.mapper" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+        <!-- 关闭工具类的 DEBUG 日志 -->
+        <logger name="io.vanguard.testops.system.utils" level="INFO">
+            <appender-ref ref="console"/>
+        </logger>
+    </springProfile>
+
+    <logger name="io.vanguard.testops.Application" additivity="false" level="${logger.level:INFO}">
+        <appender-ref ref="infoAsyncAppender"/>
+    </logger>
+
+    <!-- 降低 Kafka 客户端日志级别，减少连接警告 -->
+    <logger name="org.apache.kafka" level="ERROR"/>
+    <logger name="org.springframework.kafka" level="WARN"/>
+
+</configuration>

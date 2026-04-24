@@ -1,0 +1,67 @@
+package io.vanguard.testops.functional.service;
+
+import io.vanguard.testops.functional.job.DemandSyncJob;
+import io.vanguard.testops.project.domain.ProjectApplication;
+import io.vanguard.testops.sdk.constants.ProjectApplicationType;
+import io.vanguard.testops.sdk.constants.ScheduleResourceType;
+import io.vanguard.testops.sdk.constants.ScheduleType;
+import io.vanguard.testops.sdk.util.Translator;
+import io.vanguard.testops.system.domain.Schedule;
+import io.vanguard.testops.system.runtime.schedule.ScheduleService;
+import io.vanguard.testops.system.service.BaseDemandScheduleService;
+import io.vanguard.testops.system.uid.IDGenerator;
+import jakarta.annotation.Resource;
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@Transactional(rollbackFor = Exception.class)
+public class DemandScheduleServiceImpl implements BaseDemandScheduleService {
+
+    @Resource
+    private ScheduleService scheduleService;
+
+    @Override
+    public void updateDemandSyncScheduleConfig(List<ProjectApplication> bugSyncConfigs, String projectId, String currentUser) {
+        List<ProjectApplication> syncCron = bugSyncConfigs.stream().filter(config -> config.getType().equals(ProjectApplicationType.CASE_RELATED_CONFIG.CASE_RELATED.name() + "_" + ProjectApplicationType.CASE_RELATED_CONFIG.CRON_EXPRESSION.name())).toList();
+        List<ProjectApplication> caseEnable = bugSyncConfigs.stream().filter(config -> config.getType().equals(ProjectApplicationType.CASE_RELATED_CONFIG.CASE_RELATED.name() + "_" + ProjectApplicationType.CASE_RELATED_CONFIG.CASE_ENABLE.name())).toList();
+        if (CollectionUtils.isNotEmpty(syncCron)) {
+            Boolean enable = Boolean.valueOf(caseEnable.getFirst().getTypeValue());
+            String typeValue = syncCron.getFirst().getTypeValue();
+            Schedule schedule = scheduleService.getScheduleByResource(projectId, DemandSyncJob.class.getName());
+            Optional<Schedule> optional = Optional.ofNullable(schedule);
+            optional.ifPresentOrElse(s -> {
+                s.setValue(typeValue);
+                scheduleService.editSchedule(s);
+                scheduleService.addOrUpdateCronJob(s, DemandSyncJob.getJobKey(projectId), DemandSyncJob.getTriggerKey(projectId), DemandSyncJob.class);
+            }, () -> {
+                Schedule request = new Schedule();
+                request.setName(Translator.get("demand.sync.job"));
+                request.setResourceId(projectId);
+                request.setKey(IDGenerator.nextStr());
+                request.setProjectId(projectId);
+                request.setEnable(enable);
+                request.setCreateUser(currentUser);
+                request.setType(ScheduleType.CRON.name());
+                request.setValue(typeValue);
+                request.setJob(DemandSyncJob.class.getName());
+                request.setResourceType(ScheduleResourceType.DEMAND_SYNC.name());
+                scheduleService.addSchedule(request);
+                scheduleService.addOrUpdateCronJob(request, DemandSyncJob.getJobKey(projectId), DemandSyncJob.getTriggerKey(projectId), DemandSyncJob.class);
+            });
+        }
+    }
+
+    @Override
+    public void enableOrNotDemandSyncSchedule(String projectId, String currentUser, Boolean enable) {
+        Schedule schedule = scheduleService.getScheduleByResource(projectId, DemandSyncJob.class.getName());
+        if (schedule != null) {
+            schedule.setEnable(enable);
+            scheduleService.editSchedule(schedule);
+        }
+    }
+}

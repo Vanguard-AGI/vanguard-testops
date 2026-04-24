@@ -1,0 +1,20 @@
+[INFO] Scanning for projects...
+Downloading from metersphere-public: https://repository.fit2cloud.com/repository/metersphere/org/apache/maven/plugins/maven-metadata.xml
+Downloading from metersphere-public: https://repository.fit2cloud.com/repository/metersphere/org/codehaus/mojo/maven-metadata.xml
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-metadata.xml
+Downloading from central: https://repo.maven.apache.org/maven2/org/codehaus/mojo/maven-metadata.xml
+Progress (1): 1.4/14 kBProgress (1): 2.8/14 kBProgress (1): 4.1/14 kBProgress (1): 5.5/14 kBProgress (1): 6.9/14 kBProgress (1): 8.3/14 kBProgress (1): 9.7/14 kBProgress (1): 11/14 kB Progress (1): 12/14 kBProgress (1): 14/14 kBProgress (1): 14 kB                      Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-metadata.xml (14 kB at 25 kB/s)
+Progress (1): 1.4/21 kBProgress (1): 2.8/21 kBProgress (1): 4.1/21 kBProgress (1): 5.5/21 kBProgress (1): 6.9/21 kBProgress (1): 8.3/21 kBProgress (1): 9.7/21 kBProgress (1): 11/21 kB Progress (1): 12/21 kBProgress (1): 14/21 kBProgress (1): 15/21 kBProgress (1): 17/21 kBProgress (1): 18/21 kBProgress (1): 19/21 kBProgress (1): 21 kB                      Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/mojo/maven-metadata.xml (21 kB at 30 kB/s)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.035 s
+[INFO] Finished at: 2025-08-13T11:32:01+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] No plugin found for prefix '.endpoint=https' in the current project and in the plugin groups [org.apache.maven.plugins, org.codehaus.mojo] available from the repositories [local (C:\Users\33502\.m2\repository), central (https://repo.maven.apache.org/maven2), metersphere-public (https://repository.fit2cloud.com/repository/metersphere/)] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/NoPluginFoundForPrefixException

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.functional.mapper.CaseMetricsDetailMapper">
+  <resultMap id="BaseResultMap" type="io.vanguard.testops.functional.domain.CaseMetricsDetail">
+    <id column="id" jdbcType="VARCHAR" property="id" />
+    <result column="case_id" jdbcType="VARCHAR" property="caseId" />
+    <result column="source_case_id" jdbcType="VARCHAR" property="sourceCaseId" />
+    <result column="reuse_type" jdbcType="VARCHAR" property="reuseType" />
+    <result column="project_id" jdbcType="VARCHAR" property="projectId" />
+    <result column="create_user" jdbcType="VARCHAR" property="createUser" />
+    <result column="cs_factor_c1" jdbcType="DECIMAL" property="csFactorC1" />
+    <result column="cs_factor_c2" jdbcType="DECIMAL" property="csFactorC2" />
+    <result column="cs_factor_c3" jdbcType="DECIMAL" property="csFactorC3" />
+    <result column="cs_factor_c4" jdbcType="DECIMAL" property="csFactorC4" />
+    <result column="cs_factor_c5" jdbcType="DECIMAL" property="csFactorC5" />
+    <result column="cs_factor_c6" jdbcType="DECIMAL" property="csFactorC6" />
+    <result column="cs_score" jdbcType="DECIMAL" property="csScore" />
+    <result column="complexity_level" jdbcType="VARCHAR" property="complexityLevel" />
+    <result column="case_type" jdbcType="VARCHAR" property="caseType" />
+    <result column="env_factor" jdbcType="DECIMAL" property="envFactor" />
+    <result column="algo_expected_write_ms" jdbcType="BIGINT" property="algoExpectedWriteMs" />
+    <result column="algo_expected_exec_ms" jdbcType="BIGINT" property="algoExpectedExecMs" />
+    <result column="platform_actual_write_ms" jdbcType="BIGINT" property="platformActualWriteMs" />
+    <result column="case_source_type" jdbcType="VARCHAR" property="caseSourceType" />
+    <result column="modification_cost_ms" jdbcType="BIGINT" property="modificationCostMs" />
+    <result column="saved_write_ms" jdbcType="BIGINT" property="savedWriteMs" />
+    <result column="uqs_score" jdbcType="DECIMAL" property="uqsScore" />
+    <result column="reuse_count" jdbcType="INTEGER" property="reuseCount" />
+    <result column="modify_count" jdbcType="INTEGER" property="modifyCount" />
+    <result column="create_time" jdbcType="BIGINT" property="createTime" />
+    <result column="update_time" jdbcType="BIGINT" property="updateTime" />
+    <result column="last_calc_time" jdbcType="BIGINT" property="lastCalcTime" />
+  </resultMap>
+
+  <sql id="Base_Column_List">
+    id, case_id, source_case_id, reuse_type, project_id, create_user, cs_factor_c1, cs_factor_c2, cs_factor_c3, cs_factor_c4, 
+    cs_factor_c5, cs_factor_c6, cs_score, complexity_level, case_type, env_factor, 
+    algo_expected_write_ms, algo_expected_exec_ms, platform_actual_write_ms, case_source_type, 
+    modification_cost_ms, saved_write_ms, uqs_score, reuse_count, modify_count, 
+    create_time, update_time, last_calc_time
+  </sql>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.case_metrics_detail
+    where id = #{id,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectByCaseId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.case_metrics_detail
+    where case_id = #{caseId,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectByProjectId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.case_metrics_detail
+    where project_id = #{projectId,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectByCaseIds" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from spotter_efficiency.case_metrics_detail
+    where case_id IN
+    <foreach collection="caseIds" item="caseId" open="(" separator="," close=")">
+      #{caseId}
+    </foreach>
+  </select>
+
+  <insert id="insert" parameterType="io.vanguard.testops.functional.domain.CaseMetricsDetail">
+    insert into spotter_efficiency.case_metrics_detail (id, case_id, source_case_id, reuse_type, project_id,
+      create_user, cs_factor_c1, cs_factor_c2,
+      cs_factor_c3, cs_factor_c4, cs_factor_c5, 
+      cs_factor_c6, cs_score, complexity_level, 
+      case_type, env_factor, algo_expected_write_ms, algo_expected_exec_ms, 
+      platform_actual_write_ms, case_source_type, modification_cost_ms, 
+      saved_write_ms, uqs_score, reuse_count, 
+      modify_count, create_time, update_time, 
+      last_calc_time)
+    values (#{id,jdbcType=VARCHAR}, #{caseId,jdbcType=VARCHAR}, #{sourceCaseId,jdbcType=VARCHAR}, #{reuseType,jdbcType=VARCHAR}, #{projectId,jdbcType=VARCHAR},
+      #{createUser,jdbcType=VARCHAR}, #{csFactorC1,jdbcType=DECIMAL}, #{csFactorC2,jdbcType=DECIMAL},
+      #{csFactorC3,jdbcType=DECIMAL}, #{csFactorC4,jdbcType=DECIMAL}, #{csFactorC5,jdbcType=DECIMAL}, 
+      #{csFactorC6,jdbcType=DECIMAL}, #{csScore,jdbcType=DECIMAL}, #{complexityLevel,jdbcType=VARCHAR}, 
+      #{caseType,jdbcType=VARCHAR}, #{envFactor,jdbcType=DECIMAL}, #{algoExpectedWriteMs,jdbcType=BIGINT}, 
+      #{algoExpectedExecMs,jdbcType=BIGINT}, #{platformActualWriteMs,jdbcType=BIGINT}, 
+      #{caseSourceType,jdbcType=VARCHAR}, #{modificationCostMs,jdbcType=BIGINT}, 
+      #{savedWriteMs,jdbcType=BIGINT}, #{uqsScore,jdbcType=DECIMAL}, #{reuseCount,jdbcType=INTEGER}, 
+      #{modifyCount,jdbcType=INTEGER}, #{createTime,jdbcType=BIGINT}, #{updateTime,jdbcType=BIGINT}, 
+      #{lastCalcTime,jdbcType=BIGINT})
+  </insert>
+
+  <update id="updateByPrimaryKey" parameterType="io.vanguard.testops.functional.domain.CaseMetricsDetail">
+    update spotter_efficiency.case_metrics_detail
+    set case_id = #{caseId,jdbcType=VARCHAR},
+      source_case_id = #{sourceCaseId,jdbcType=VARCHAR},
+      reuse_type = #{reuseType,jdbcType=VARCHAR},
+      project_id = #{projectId,jdbcType=VARCHAR},
+      create_user = #{createUser,jdbcType=VARCHAR},
+      cs_factor_c1 = #{csFactorC1,jdbcType=DECIMAL},
+      cs_factor_c2 = #{csFactorC2,jdbcType=DECIMAL},
+      cs_factor_c3 = #{csFactorC3,jdbcType=DECIMAL},
+      cs_factor_c4 = #{csFactorC4,jdbcType=DECIMAL},
+      cs_factor_c5 = #{csFactorC5,jdbcType=DECIMAL},
+      cs_factor_c6 = #{csFactorC6,jdbcType=DECIMAL},
+      cs_score = #{csScore,jdbcType=DECIMAL},
+      complexity_level = #{complexityLevel,jdbcType=VARCHAR},
+      case_type = #{caseType,jdbcType=VARCHAR},
+      env_factor = #{envFactor,jdbcType=DECIMAL},
+      algo_expected_write_ms = #{algoExpectedWriteMs,jdbcType=BIGINT},
+      algo_expected_exec_ms = #{algoExpectedExecMs,jdbcType=BIGINT},
+      platform_actual_write_ms = #{platformActualWriteMs,jdbcType=BIGINT},
+      case_source_type = #{caseSourceType,jdbcType=VARCHAR},
+      modification_cost_ms = #{modificationCostMs,jdbcType=BIGINT},
+      saved_write_ms = #{savedWriteMs,jdbcType=BIGINT},
+      uqs_score = #{uqsScore,jdbcType=DECIMAL},
+      reuse_count = #{reuseCount,jdbcType=INTEGER},
+      modify_count = #{modifyCount,jdbcType=INTEGER},
+      update_time = #{updateTime,jdbcType=BIGINT},
+      last_calc_time = #{lastCalcTime,jdbcType=BIGINT}
+    where id = #{id,jdbcType=VARCHAR}
+  </update>
+
+  <insert id="batchInsert" parameterType="map">
+    insert into spotter_efficiency.case_metrics_detail 
+    (id, case_id, source_case_id, reuse_type, project_id, create_user, cs_factor_c1, cs_factor_c2, 
+     cs_factor_c3, cs_factor_c4, cs_factor_c5, cs_factor_c6, cs_score, 
+     complexity_level, case_type, env_factor, algo_expected_write_ms, 
+     algo_expected_exec_ms, platform_actual_write_ms, case_source_type, 
+     modification_cost_ms, saved_write_ms, uqs_score, reuse_count, 
+     modify_count, create_time, update_time, last_calc_time)
+    values
+    <foreach collection="list" item="item" separator=",">
+      (#{item.id,jdbcType=VARCHAR}, #{item.caseId,jdbcType=VARCHAR}, #{item.sourceCaseId,jdbcType=VARCHAR}, #{item.reuseType,jdbcType=VARCHAR}, #{item.projectId,jdbcType=VARCHAR}, 
+       #{item.createUser,jdbcType=VARCHAR}, #{item.csFactorC1,jdbcType=DECIMAL}, #{item.csFactorC2,jdbcType=DECIMAL}, 
+       #{item.csFactorC3,jdbcType=DECIMAL}, #{item.csFactorC4,jdbcType=DECIMAL}, #{item.csFactorC5,jdbcType=DECIMAL}, 
+       #{item.csFactorC6,jdbcType=DECIMAL}, #{item.csScore,jdbcType=DECIMAL}, #{item.complexityLevel,jdbcType=VARCHAR}, 
+       #{item.caseType,jdbcType=VARCHAR}, #{item.envFactor,jdbcType=DECIMAL}, #{item.algoExpectedWriteMs,jdbcType=BIGINT}, 
+       #{item.algoExpectedExecMs,jdbcType=BIGINT}, #{item.platformActualWriteMs,jdbcType=BIGINT}, 
+       #{item.caseSourceType,jdbcType=VARCHAR}, #{item.modificationCostMs,jdbcType=BIGINT}, 
+       #{item.savedWriteMs,jdbcType=BIGINT}, #{item.uqsScore,jdbcType=DECIMAL}, #{item.reuseCount,jdbcType=INTEGER}, 
+       #{item.modifyCount,jdbcType=INTEGER}, #{item.createTime,jdbcType=BIGINT}, #{item.updateTime,jdbcType=BIGINT}, 
+       #{item.lastCalcTime,jdbcType=BIGINT})
+    </foreach>
+  </insert>
+
+</mapper>

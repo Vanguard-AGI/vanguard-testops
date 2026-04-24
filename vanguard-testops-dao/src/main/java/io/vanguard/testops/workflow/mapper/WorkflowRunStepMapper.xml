@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowRunStepMapper">
+
+    <resultMap id="WorkflowRunStepResultMap" type="io.vanguard.testops.workflow.domain.WorkflowRunStep">
+        <id column="run_step_id" property="runStepId"/>
+        <result column="run_id" property="runId"/>
+        <result column="step_id" property="stepId"/>
+        <result column="step_name" property="stepName"/>
+        <result column="step_type" property="stepType"/>
+        <result column="order_num" property="orderNum"/>
+        <result column="status" property="status"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="duration_ms" property="durationMs"/>
+        <result column="request_data" property="requestData" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="response_data" property="responseData" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="assertion_logs" property="assertion" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="extract_vars" property="extractVars" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="error_msg" property="errorMsg"/>
+        <result column="error_stack" property="errorStack"/>
+        <result column="description" property="description"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 根据运行ID查询所有步骤执行记录 -->
+    <select id="selectByRunId" resultMap="WorkflowRunStepResultMap">
+        SELECT * FROM workflow_run_step 
+        WHERE run_id = #{runId} 
+        ORDER BY order_num ASC
+    </select>
+
+    <!-- 根据步骤ID查询执行记录 -->
+    <select id="selectByStepId" resultMap="WorkflowRunStepResultMap">
+        SELECT * FROM workflow_run_step 
+        WHERE step_id = #{stepId} 
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 批量插入步骤执行记录 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO workflow_run_step (
+            run_step_id, run_id, step_id, step_name, step_type, order_num,
+            status, start_time, end_time, duration_ms,
+            request_data, response_data, assertion_logs, extract_vars,
+            error_msg, error_stack, description,
+            create_time, update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.runStepId},
+                #{item.runId},
+                #{item.stepId},
+                #{item.stepName},
+                #{item.stepType},
+                #{item.orderNum},
+                #{item.status},
+                #{item.startTime},
+                #{item.endTime},
+                #{item.durationMs},
+                #{item.requestData, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+                #{item.responseData, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+                #{item.assertion, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+                #{item.extractVars, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+                #{item.errorMsg},
+                #{item.errorStack},
+                #{item.description},
+                #{item.createTime},
+                #{item.updateTime}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 根据运行ID删除所有步骤执行记录 -->
+    <delete id="deleteByRunId">
+        DELETE FROM workflow_run_step WHERE run_id = #{runId}
+    </delete>
+
+</mapper>
+

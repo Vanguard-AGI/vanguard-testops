@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowStepLinkMapper">
+
+    <!-- 批量插入连线 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO workflow_step_link (
+            link_id, workflow_id, source_step_id, target_step_id,
+            label, color, condition_expr, order_num,
+            create_time, update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.linkId},
+                #{item.workflowId},
+                #{item.sourceStepId},
+                #{item.targetStepId},
+                #{item.label},
+                #{item.color},
+                #{item.conditionExpr},
+                #{item.orderNum},
+                #{item.createTime},
+                #{item.updateTime}
+            )
+        </foreach>
+    </insert>
+
+</mapper>
+

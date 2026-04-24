@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.vanguard.testops.workflow.mapper.WorkflowTestReportMapper">
+
+    <resultMap id="BaseResultMap" type="io.vanguard.testops.workflow.domain.WorkflowTestReport">
+        <id column="report_id" property="reportId" jdbcType="VARCHAR"/>
+        <result column="project_id" property="projectId" jdbcType="VARCHAR"/>
+        <result column="report_name" property="reportName" jdbcType="VARCHAR"/>
+        <result column="report_type" property="reportType" jdbcType="VARCHAR"/>
+        <result column="tags" property="tags" jdbcType="VARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="executor" property="executor" jdbcType="VARCHAR"/>
+        <result column="trigger_type" property="triggerType" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="start_time" property="startTime" jdbcType="BIGINT"/>
+        <result column="end_time" property="endTime" jdbcType="BIGINT"/>
+        <result column="duration_ms" property="durationMs" jdbcType="BIGINT"/>
+        <result column="total_workflows" property="totalWorkflows" jdbcType="INTEGER"/>
+        <result column="total_tests" property="totalTests" jdbcType="INTEGER"/>
+        <result column="success_tests" property="successTests" jdbcType="INTEGER"/>
+        <result column="failed_tests" property="failedTests" jdbcType="INTEGER"/>
+        <result column="skipped_tests" property="skippedTests" jdbcType="INTEGER"/>
+        <result column="pending_tests" property="pendingTests" jdbcType="INTEGER"/>
+        <result column="success_rate" property="successRate" jdbcType="DECIMAL"/>
+        <result column="avg_duration_seconds" property="avgDurationSeconds" jdbcType="INTEGER"/>
+        <result column="summary" property="summary" jdbcType="LONGVARCHAR"/>
+        <result column="result_summary" property="resultSummary" jdbcType="LONGVARCHAR" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="environment_id" property="environmentId" jdbcType="VARCHAR"/>
+        <result column="environment_name" property="environmentName" jdbcType="VARCHAR"/>
+        <result column="report_file_id" property="reportFileId" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="BIGINT"/>
+        <result column="create_user" property="createUser" jdbcType="VARCHAR"/>
+        <result column="update_time" property="updateTime" jdbcType="BIGINT"/>
+        <result column="update_user" property="updateUser" jdbcType="VARCHAR"/>
+        <result column="deleted_time" property="deletedTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted_by" property="deletedBy" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="selectByReportId" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT * FROM workflow_test_report
+        WHERE report_id = #{reportId,jdbcType=VARCHAR}
+        AND deleted_time IS NULL
+    </select>
+
+    <select id="selectByProjectId" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT * FROM workflow_test_report
+        WHERE project_id = #{projectId,jdbcType=VARCHAR}
+        AND deleted_time IS NULL
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectWorkflowRunIdsByReportId" parameterType="java.lang.String" resultType="java.lang.String">
+        SELECT run_id FROM workflow_run
+        WHERE report_id = #{reportId,jdbcType=VARCHAR}
+    </select>
+
+    <select id="selectAvgSuccessRate" resultType="java.lang.Double">
+        SELECT AVG(CAST(success_rate AS DECIMAL(10,4))) FROM workflow_test_report ${ew.customSqlSegment}
+    </select>
+
+</mapper>
+
